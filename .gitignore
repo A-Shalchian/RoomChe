@@ -35,6 +35,11 @@ yarn-error.log*
 
 # claude code — personal/secret settings only
 .claude/settings.local.json
+.claude/CLAUDE.md
+.mcp.json
+
+# windows / cygwin crash dumps
+*.stackdump
 
 # vercel
 .vercel
