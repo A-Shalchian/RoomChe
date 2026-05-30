@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { completeOnboarding } from "@/features/onboarding/actions";
+import { BrutalistShell, DisplayLine } from "@/features/auth/brutalist-shell";
 
 type SearchParams = Promise<{ error?: string }>;
 
@@ -25,29 +26,63 @@ export default async function OnboardingPage({
 
   if (profile?.onboarded_at) redirect("/app");
 
+  const firstName = profile?.display_name?.split(" ")[0];
+
   return (
-    <main className="flex flex-1 items-center justify-center px-6">
-      <div className="w-full max-w-md space-y-8">
-        <div className="space-y-2">
-          <h1 className="text-2xl font-medium tracking-tight">
-            welcome{profile?.display_name ? `, ${profile.display_name.split(" ")[0]}` : ""}.
+    <BrutalistShell eyebrow="the welcome" index="01 / 01">
+      <div className="grid grid-cols-12 items-end gap-x-4 gap-y-12 sm:gap-x-6">
+        <div className="col-span-12 lg:col-span-7">
+          <h1 aria-label={`welcome${firstName ? `, ${firstName}` : ""}.`}>
+            <DisplayLine>welcome</DisplayLine>
+            {firstName && (
+              <DisplayLine>
+                <span style={{ color: "var(--lv-accent)" }}>{firstName}.</span>
+              </DisplayLine>
+            )}
           </h1>
-          <p className="text-sm text-foreground/60">
-            survey questions land here. for now, just confirm you&apos;re in.
-          </p>
         </div>
 
-        <form action={completeOnboarding}>
-          <button
-            type="submit"
-            className="inline-flex h-10 items-center rounded-md bg-foreground px-5 text-sm font-medium text-background transition-opacity hover:opacity-90"
-          >
-            i&apos;m in
-          </button>
-        </form>
+        <div className="col-span-12 lg:col-span-5">
+          <p className="mb-6 max-w-sm text-[16px] leading-[1.5]">
+            the survey lands here later. for now, step through the door and the
+            empty table is yours to fill.
+          </p>
 
-        {error && <p className="text-sm text-red-500">{error}</p>}
+          <form action={completeOnboarding}>
+            <button
+              type="submit"
+              className="group relative inline-flex items-center gap-3 overflow-hidden border-[3px] px-6 py-4 font-mono text-[12px] uppercase tracking-[0.22em]"
+              style={{
+                borderColor: "var(--lv-ink)",
+                background: "var(--lv-ink)",
+                color: "var(--lv-bg)",
+              }}
+            >
+              <span
+                aria-hidden
+                className="absolute inset-0 origin-left scale-x-0 transition-transform duration-500 ease-out group-hover:scale-x-100"
+                style={{ background: "var(--lv-accent)" }}
+              />
+              <span className="relative">i&apos;m in</span>
+              <span
+                aria-hidden
+                className="relative inline-block transition-transform duration-300 ease-out group-hover:translate-x-1"
+              >
+                →
+              </span>
+            </button>
+          </form>
+
+          {error && (
+            <p
+              className="mt-4 border-l-[3px] pl-3 font-mono text-[11px] uppercase tracking-[0.18em]"
+              style={{ borderColor: "var(--lv-accent)", color: "var(--lv-accent)" }}
+            >
+              {error}
+            </p>
+          )}
+        </div>
       </div>
-    </main>
+    </BrutalistShell>
   );
 }
