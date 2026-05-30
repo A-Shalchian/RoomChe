@@ -1,26 +1,132 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --paper: #f4eee2;
+  --paper-2: #ebe2ce;
+  --paper-3: #e1d5b8;
+  --ink: #1a1410;
+  --ink-2: #3a2e22;
+  --ink-3: #6b5a45;
+  --ink-4: #9c8c73;
+  --rule: #c9bb9d;
+  --accent: #8b3a1f;
+  --accent-soft: #b86b3a;
+  --warn: #a8541b;
+  --keep: #5a6b3f;
+
+  --background: var(--paper);
+  --foreground: var(--ink);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-paper: var(--paper);
+  --color-paper-2: var(--paper-2);
+  --color-paper-3: var(--paper-3);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-ink-4: var(--ink-4);
+  --color-rule: var(--rule);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-warn: var(--warn);
+  --color-keep: var(--keep);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-serif: var(--font-fraunces);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  background-image:
+    radial-gradient(rgba(106, 76, 33, 0.035) 1px, transparent 1px),
+    radial-gradient(rgba(106, 76, 33, 0.025) 1px, transparent 1px);
+  background-size: 3px 3px, 7px 7px;
+  background-position: 0 0, 1px 2px;
+}
+
+body:has([data-landing]) {
+  background: transparent;
+  background-image: none;
+}
+
+html:has([data-landing])::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+html:has([data-landing])::-webkit-scrollbar-track {
+  background: var(--sb-track, var(--paper));
+}
+
+html:has([data-landing])::-webkit-scrollbar-thumb {
+  background: var(--sb-thumb, var(--accent));
+  border: 3px solid var(--sb-track, var(--paper));
+}
+
+@keyframes lv-marquee-left {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+@keyframes lv-marquee-right {
+  0% { transform: translateX(-50%); }
+  100% { transform: translateX(0); }
+}
+
+.lv-marquee-track {
+  display: flex;
+  width: max-content;
+  animation-duration: 60s;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+.lv-marquee-track:hover {
+  animation-play-state: paused;
+}
+
+@keyframes lv-blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+@keyframes lv-scan {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
+}
+
+@keyframes lv-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes lv-grid-scroll {
+  0% { background-position: 0 0; }
+  100% { background-position: 0 60px; }
+}
+
+@keyframes lv-float-y {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-14px); }
+}
+
+@keyframes lv-spin-slow {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lv-marquee-track,
+  .lv-anim {
+    animation: none !important;
+  }
 }
