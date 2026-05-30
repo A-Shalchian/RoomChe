@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      dupe_dismissals: {
+        Row: {
+          created_at: string
+          item_id_a: string
+          item_id_b: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          item_id_a: string
+          item_id_b: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          item_id_a?: string
+          item_id_b?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dupe_dismissals_item_id_a_fkey"
+            columns: ["item_id_a"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dupe_dismissals_item_id_b_fkey"
+            columns: ["item_id_b"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       item_tags: {
         Row: {
           item_id: string
@@ -58,6 +94,7 @@ export type Database = {
           notes: string | null
           updated_at: string
           user_id: string
+          views: number
           why_kept: string | null
           would_discard: string | null
         }
@@ -74,6 +111,7 @@ export type Database = {
           notes?: string | null
           updated_at?: string
           user_id: string
+          views?: number
           why_kept?: string | null
           would_discard?: string | null
         }
@@ -90,6 +128,7 @@ export type Database = {
           notes?: string | null
           updated_at?: string
           user_id?: string
+          views?: number
           why_kept?: string | null
           would_discard?: string | null
         }
@@ -178,7 +217,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      increment_item_views: { Args: { item: string }; Returns: undefined }
     }
     Enums: {
       [_ in never]: never
