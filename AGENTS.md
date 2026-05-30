@@ -8,13 +8,14 @@ this is **next.js 16**, not the version your training data knows. apis, conventi
 
 ## hard rules
 
-1. **no comments** unless the WHY is genuinely non-obvious (hidden constraint, workaround, surprising invariant). never explain WHAT the code does. never reference task/pr/issue ids.
+1. **no comments. no em dashes.** zero code comments and zero `—` characters anywhere in source, copy, or content. names and code do the explaining. the only exceptions are machine-required directives (e.g. `eslint-disable`, `@ts-expect-error`) and tool-generated files (e.g. supabase `database.types.ts`). use a comma, colon, or rewrite instead of an em dash. never reference task/pr/issue ids.
 2. **no ai-slop ui.** no generic gradient hero + 3-feature-card layouts. no purple-to-pink. when building real screens use the `frontend-design` skill. placeholders may be plain typography.
 3. **components stay small.** files over ~250 lines must be split. one responsibility per component. feature code lives in `src/features/<feature>/`, shared ui in `src/components/`.
 4. **state**: server state → react query or rsc + server actions. local → `useState`/`useReducer`. no redux/zustand unless genuinely needed. no prop-drilling > 2 levels.
 5. **typescript strict.** no `any` without a `// FIXME:` + reason. validate boundaries with zod.
-6. **no premature abstraction, no backwards-compat shims, no dead code.** delete unused code outright — don't leave `// removed:` markers.
+6. **no premature abstraction, no backwards-compat shims, no dead code.** delete unused code outright. don't leave `// removed:` markers.
 7. **no scope creep.** a bug fix doesn't need surrounding cleanup. a one-shot doesn't need a helper. don't design for hypothetical future requirements.
+8. **plain commits.** never add a `Co-Authored-By: Claude` trailer or any Claude/Anthropic/AI attribution to commit messages or PR bodies. plain messages only.
 
 ## folder layout
 
@@ -29,7 +30,7 @@ src/
 
 ## supabase
 
-- project ref: `owarvmwdavogquowpqim`
+- project ref: `ptjpvefasdpnrkycufxx`
 - mcp server is wired in the user's `~/.claude/settings.json`
 - schema migrations: write sql files under `supabase/migrations/` when we get there (not yet)
 - never commit service-role keys
