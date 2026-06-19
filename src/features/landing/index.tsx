@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   motion,
@@ -12,7 +12,7 @@ import {
 } from "motion/react";
 import { specimens } from "./items";
 import { usePrefersReducedMotion } from "./use-reduced-motion";
-import { CardReveal, hoverFor, hoverTransition, type SourceRect } from "./card-reveal";
+import { CardReveal, type SourceRect } from "./card-reveal";
 
 const TEAL = "#06222a";
 const TEAL_2 = "#0a3540";
@@ -29,11 +29,18 @@ const VERDICTS: Verdict[] = ["never", "never", "maybe", "never", "never", "soon"
 const SEAL: Record<Verdict, string> = { never: "Kept", maybe: "Uncertain", soon: "To Part With" };
 
 const entranceVariants = {
-  hidden: { opacity: 0, y: 60 },
+  hidden: { opacity: 0, y: 72, scale: 0.92 },
   show: (depth: number) => ({
     opacity: 1,
     y: 0,
-    transition: { delay: 0.1 + (3 - depth) * 0.14, duration: 0.7, ease: [0.22, 0.61, 0.36, 1] as const },
+    scale: 1,
+    transition: {
+      delay: 0.12 + (3 - depth) * 0.11,
+      type: "spring" as const,
+      stiffness: 180,
+      damping: 20,
+      mass: 0.9,
+    },
   }),
 };
 
@@ -67,22 +74,23 @@ function Tile({ index, slot, counter, reduced, selected, onSelect }: TileProps) 
   const baseY = (slot.row - 1.5) * 112;
   const liftZ = slot.depth * 26;
 
-  const liftSpring = { type: "spring" as const, stiffness: 320, damping: 26 };
+  const liftSpring = { type: "spring" as const, stiffness: 260, damping: 22, mass: 0.8 };
+
+  useEffect(() => {
+    if (!hover) return;
+    function onMove(e: PointerEvent) {
+      const r = frameRef.current?.getBoundingClientRect();
+      if (!r) return;
+      const m = 10;
+      const inside = e.clientX >= r.left - m && e.clientX <= r.right + m && e.clientY >= r.top - m && e.clientY <= r.bottom + m;
+      if (!inside) setHover(false);
+    }
+    window.addEventListener("pointermove", onMove);
+    return () => window.removeEventListener("pointermove", onMove);
+  }, [hover]);
 
   return (
     <motion.div
-      onPointerEnter={() => setHover(true)}
-      onPointerLeave={() => setHover(false)}
-      onPointerDownCapture={(e) => {
-        down.current = { x: e.clientX, y: e.clientY };
-      }}
-      onClickCapture={(e) => {
-        const moved = Math.hypot(e.clientX - down.current.x, e.clientY - down.current.y);
-        if (moved < 6 && frameRef.current) {
-          e.stopPropagation();
-          onSelect(index, frameRef.current.getBoundingClientRect());
-        }
-      }}
       initial={false}
       animate={{ opacity: 1 }}
       style={{
@@ -106,7 +114,7 @@ function Tile({ index, slot, counter, reduced, selected, onSelect }: TileProps) 
         animate={
           reduced || !hover
             ? { translateZ: FLOOR_Z - liftZ, scale: 1, opacity: 0.42 }
-            : { translateZ: FLOOR_Z - (liftZ + 130), scale: 1.5, opacity: 0.18 }
+            : { translateZ: FLOOR_Z - (liftZ + 30), scale: 1.2, opacity: 0.24 }
         }
         transition={reduced ? { duration: 0 } : liftSpring}
         style={{
@@ -119,11 +127,12 @@ function Tile({ index, slot, counter, reduced, selected, onSelect }: TileProps) 
           borderRadius: "50%",
           background: "radial-gradient(closest-side, rgba(0,0,0,0.55), transparent)",
           filter: "blur(2px)",
+          pointerEvents: "none",
         }}
       />
       <motion.div
         initial={false}
-        animate={reduced || !hover ? { translateZ: liftZ, scale: 1 } : { translateZ: liftZ + 130, scale: 1.08 }}
+        animate={reduced || !hover ? { translateZ: liftZ, scale: 1 } : { translateZ: liftZ + 30, scale: 1.04 }}
         transition={reduced ? { duration: 0 } : liftSpring}
         style={{ transformStyle: "preserve-3d" }}
       >
@@ -135,13 +144,19 @@ function Tile({ index, slot, counter, reduced, selected, onSelect }: TileProps) 
           style={{ transformStyle: "preserve-3d" }}
         >
           <motion.div style={{ rotateZ: reduced ? 0 : counter, transformStyle: "preserve-3d" }}>
-            <motion.div
-              animate={reduced || selected ? hoverFor(false) : hoverFor(hover)}
-              transition={hoverTransition}
-              style={{ transformStyle: "preserve-3d" }}
-            >
             <div
               ref={frameRef}
+              onPointerEnter={() => setHover(true)}
+              onPointerDownCapture={(e) => {
+                down.current = { x: e.clientX, y: e.clientY };
+              }}
+              onClickCapture={(e) => {
+                const moved = Math.hypot(e.clientX - down.current.x, e.clientY - down.current.y);
+                if (moved < 6 && frameRef.current) {
+                  e.stopPropagation();
+                  onSelect(index, frameRef.current.getBoundingClientRect());
+                }
+              }}
               style={{
                 position: "relative",
                 aspectRatio: "1 / 1",
@@ -151,6 +166,7 @@ function Tile({ index, slot, counter, reduced, selected, onSelect }: TileProps) 
                 filter: `drop-shadow(0 ${22 + slot.depth * 12}px ${28 + slot.depth * 14}px rgba(0,0,0,${0.4 + slot.depth * 0.06}))`,
                 opacity: selected ? 0 : 1,
                 transition: "opacity 0.15s",
+                cursor: "pointer",
               }}
             >
               <span
@@ -217,7 +233,6 @@ function Tile({ index, slot, counter, reduced, selected, onSelect }: TileProps) 
                 </span>
               </div>
             </div>
-            </motion.div>
           </motion.div>
         </motion.div>
       </motion.div>
@@ -228,8 +243,8 @@ function Tile({ index, slot, counter, reduced, selected, onSelect }: TileProps) 
 function IsoScene({ reduced, selected, onSelect }: { reduced: boolean; selected: number | null; onSelect: (i: number, rect: DOMRect) => void }) {
   const dragX = useMotionValue(0);
   const dragY = useMotionValue(0);
-  const dx = useSpring(dragX, { stiffness: 120, damping: 20 });
-  const dy = useSpring(dragY, { stiffness: 120, damping: 20 });
+  const dx = useSpring(dragX, { stiffness: 150, damping: 22 });
+  const dy = useSpring(dragY, { stiffness: 150, damping: 22 });
 
   const tilt = useTransform(dy, (d) => 58 - d * 0.18);
   const spin = useTransform(dx, (d) => -42 + d * 0.22);
@@ -410,7 +425,7 @@ export default function IsometricLanding() {
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          padding: "1.1rem 1.8rem",
+          padding: "0.775rem 1.8rem",
           borderBottom: `1px solid ${INK_2}`,
           background: "rgba(6,34,42,0.72)",
           backdropFilter: "blur(10px)",
@@ -429,8 +444,8 @@ export default function IsometricLanding() {
       </nav>
 
       <section style={{ textAlign: "center", padding: "13vh 6vw 0" }}>
-        <h1 style={{ fontSize: "clamp(2.6rem, 8vw, 6rem)", fontWeight: 900, letterSpacing: "-0.04em", lineHeight: 0.95, margin: "0 auto", maxWidth: "16ch" }}>
-          A Room Is a <span style={{ color: ORANGE }}>Database</span>
+        <h1 style={{ fontSize: "clamp(2.6rem, 8vw, 6rem)", fontWeight: 900, letterSpacing: "-0.04em", lineHeight: 0.95, margin: "5px auto 0", maxWidth: "16ch" }}>
+          A Room is a <span style={{ color: ORANGE }}>Database</span>
         </h1>
         <p style={{ fontSize: "clamp(1rem, 2.4vw, 1.3rem)", color: "#aeb9bb", maxWidth: "44ch", margin: "1.4rem auto 0", lineHeight: 1.5 }}>
           Stack every object you own into one queryable room. Drag to orbit it, lift a card to see it rise.

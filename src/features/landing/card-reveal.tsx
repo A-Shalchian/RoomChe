@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, motion, type Transition, type TargetAndTransition } from "motion/react";
+import { AnimatePresence, motion, type TargetAndTransition } from "motion/react";
 import { useEffect } from "react";
 import type { Specimen } from "./items";
 
@@ -13,12 +13,6 @@ const MONO = "var(--font-geist-mono), ui-monospace, monospace";
 export type SourceRect = { x: number; y: number; w: number; h: number };
 
 const FOCUS_W = 360;
-
-export function hoverFor(hovered: boolean): TargetAndTransition {
-  return hovered ? { rotateX: 360 } : { rotateX: 0 };
-}
-
-export const hoverTransition: Transition = { duration: 1.4, ease: [0.16, 1, 0.3, 1] };
 
 function flight(
   dx: number,
