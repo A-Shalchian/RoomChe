@@ -8,6 +8,12 @@ import { DupeBanner } from "@/features/items/dupes/dupe-banner";
 import { loadDismissedPairs } from "@/features/items/dupes/actions";
 import { requestNow } from "@/lib/now";
 import { SiteFooter } from "@/components/site-footer";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Your room",
+  robots: { index: false, follow: false },
+};
 
 type SearchParams = Promise<{ error?: string }>;
 

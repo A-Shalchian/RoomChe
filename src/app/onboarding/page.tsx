@@ -1,7 +1,13 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { completeOnboarding } from "@/features/onboarding/actions";
 import { BrutalistShell, DisplayLine } from "@/features/auth/brutalist-shell";
+
+export const metadata: Metadata = {
+  title: "Welcome",
+  robots: { index: false, follow: false },
+};
 
 type SearchParams = Promise<{ error?: string }>;
 

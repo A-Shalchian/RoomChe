@@ -8,6 +8,12 @@ import { Search } from "@/features/items/dashboard/search";
 import { loadItems, loadLocations } from "@/features/items/dashboard/load-items";
 import { recordItemView } from "@/features/items/view-action";
 import { SiteFooter } from "@/components/site-footer";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Room view",
+  robots: { index: false, follow: false },
+};
 
 type SearchParams = Promise<{ focus?: string }>;
 

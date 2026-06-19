@@ -1,0 +1,29 @@
+# RoomChe
+
+> RoomChe turns a physical room into a private, queryable database of what you own. You photograph each object, name it, record where it lives, then give it a verdict: keep, hold, or let go. The result is a searchable catalogue of your belongings that stays private to you.
+
+## What it is
+
+- A personal home inventory web app. Every object you own becomes a searchable row.
+- Built around photographing, naming, and locating items, then filtering by room, category, or the year an item arrived.
+- Each item gets a verdict so the room slowly learns what it is for: kept, uncertain, or to part with.
+- Includes duplicate detection so you can spot things you already own before keeping more.
+
+## Who it is for
+
+- People decluttering a room or a whole home who want a record instead of guesswork.
+- Anyone who wants a private catalogue of belongings for insurance, moving, or simple recall.
+
+## Access
+
+- The landing page at / is public. Everything else, the catalogue and room views, sits behind login and is private to each user.
+- Sign in with a Google account.
+
+## Privacy
+
+- A user's catalogue is theirs alone. Item data is not shared or made public.
+
+## Links
+
+- Home: https://roomche.app/
+- Sign in: https://roomche.app/login

@@ -1,5 +1,11 @@
+import type { Metadata } from "next";
 import { LoginShell } from "@/features/auth/login-shell";
 import { DotBloomLogin } from "@/features/auth/dot-bloom-login";
+
+export const metadata: Metadata = {
+  title: "Login",
+  robots: { index: false, follow: false },
+};
 
 type SearchParams = Promise<{ error?: string }>;
 
