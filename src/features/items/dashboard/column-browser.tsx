@@ -10,18 +10,27 @@ const UNCATEGORIZED = "uncategorized";
 const UNLOCATED = "no location";
 
 export function ColumnBrowser({
-  items,
+  items: allItems,
   focusId,
   locations,
+  allTags,
 }: {
   items: DashboardItem[];
   focusId?: string;
   locations: string[];
+  allTags: string[];
 }) {
   const [editing, setEditing] = useState<DashboardItem | null>(null);
   const [openContainer, setOpenContainer] = useState<DashboardItem | null>(null);
+  const [activeTag, setActiveTag] = useState<string | null>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
+
+  const items = useMemo(
+    () => (activeTag ? allItems.filter((i) => i.tags.includes(activeTag)) : allItems),
+    [allItems, activeTag],
+  );
+
   const focused = focusId ? items.find((i) => i.id === focusId) : undefined;
   const activeCategory =
     searchParams.get("category") ?? (focused ? categoryOf(focused) : null);
@@ -98,10 +107,21 @@ export function ColumnBrowser({
   }, [focusId]);
 
   return (
-    <div
-      className="grid min-h-[60vh] grid-cols-1 gap-[3px] overflow-visible border-[3px] md:grid-cols-[18rem_18rem_minmax(0,1fr)]"
-      style={{ borderColor: "var(--lv-ink)", background: "var(--lv-ink)" }}
-    >
+    <div className="flex flex-col gap-4">
+      {allTags.length > 0 && (
+        <TagFilter
+          tags={allTags}
+          active={activeTag}
+          onPick={(t) => {
+            setActiveTag(t);
+            setOpenContainer(null);
+          }}
+        />
+      )}
+      <div
+        className="grid min-h-[60vh] grid-cols-1 gap-[3px] overflow-visible border-[3px] md:grid-cols-[18rem_18rem_minmax(0,1fr)]"
+        style={{ borderColor: "var(--lv-ink)", background: "var(--lv-ink)" }}
+      >
       <Column label="categories" count={categoryBuckets.size}>
         {sortedKeys(categoryBuckets).map((cat) => (
           <ColumnRow
@@ -185,12 +205,53 @@ export function ColumnBrowser({
           )
         )}
       </Column>
+      </div>
       <EditModal
         item={editing}
         locations={locations}
         containers={containers}
+        allTags={allTags}
         onClose={() => setEditing(null)}
       />
+    </div>
+  );
+}
+
+function TagFilter({
+  tags,
+  active,
+  onPick,
+}: {
+  tags: string[];
+  active: string | null;
+  onPick: (tag: string | null) => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="font-mono text-[9px] uppercase tracking-[0.22em] text-[color:var(--lv-ink-2)]">
+        tags
+      </span>
+      {tags.map((tag) => (
+        <button
+          key={tag}
+          type="button"
+          onClick={() => onPick(active === tag ? null : tag)}
+          data-active={active === tag || undefined}
+          className="border-[2px] px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.14em] transition-colors hover:[background:var(--lv-ink)] hover:[color:var(--lv-bg)] data-[active]:[background:var(--lv-accent)] data-[active]:[border-color:var(--lv-accent)] data-[active]:[color:var(--lv-bg)]"
+          style={{ borderColor: "var(--lv-ink)" }}
+        >
+          {tag}
+        </button>
+      ))}
+      {active && (
+        <button
+          type="button"
+          onClick={() => onPick(null)}
+          className="font-mono text-[10px] uppercase tracking-[0.14em] text-[color:var(--lv-ink-2)] transition-colors hover:[color:var(--lv-accent)]"
+        >
+          clear ✕
+        </button>
+      )}
     </div>
   );
 }

@@ -12,6 +12,7 @@ export type DashboardItem = {
   notes: string | null;
   is_container: boolean;
   container_id: string | null;
+  tags: string[];
   locations: { name: string } | null;
 };
 

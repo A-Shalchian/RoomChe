@@ -53,6 +53,24 @@ export function ItemCard({
           </span>
         )}
       </div>
+      {item.tags.length > 0 && (
+        <div className="mt-1.5 flex flex-wrap gap-1">
+          {item.tags.slice(0, 3).map((tag) => (
+            <span
+              key={tag}
+              className="border-[1.5px] px-1.5 py-0.5 font-mono text-[8px] uppercase tracking-[0.14em] text-[color:var(--lv-ink-2)]"
+              style={{ borderColor: "var(--lv-rule)" }}
+            >
+              {tag}
+            </span>
+          ))}
+          {item.tags.length > 3 && (
+            <span className="font-mono text-[8px] tracking-[0.14em] text-[color:var(--lv-ink-2)]">
+              +{item.tags.length - 3}
+            </span>
+          )}
+        </div>
+      )}
     </article>
   );
 }

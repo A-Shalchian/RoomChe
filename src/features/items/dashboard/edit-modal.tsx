@@ -3,6 +3,8 @@
 import { motion, AnimatePresence } from "motion/react";
 import { useEffect, useState, useTransition } from "react";
 import { deleteItem, updateItem } from "@/features/items/edit-action";
+import { setItemTags } from "@/features/items/tags-action";
+import { TagInput } from "./tag-input";
 import type { DashboardItem } from "./types";
 
 type Verdict = "never" | "maybe" | "soon" | null;
@@ -13,11 +15,13 @@ export function EditModal({
   item,
   locations,
   containers,
+  allTags,
   onClose,
 }: {
   item: DashboardItem | null;
   locations: string[];
   containers: ContainerOption[];
+  allTags: string[];
   onClose: () => void;
 }) {
   return (
@@ -28,6 +32,7 @@ export function EditModal({
           item={item}
           locations={locations}
           containers={containers}
+          allTags={allTags}
           onClose={onClose}
         />
       )}
@@ -39,11 +44,13 @@ function Body({
   item,
   locations,
   containers,
+  allTags,
   onClose,
 }: {
   item: DashboardItem;
   locations: string[];
   containers: ContainerOption[];
+  allTags: string[];
   onClose: () => void;
 }) {
   const [name, setName] = useState(item.name);
@@ -54,6 +61,7 @@ function Body({
   const [notes, setNotes] = useState(item.notes ?? "");
   const [isContainer, setIsContainer] = useState(item.is_container);
   const [containerId, setContainerId] = useState<string | null>(item.container_id);
+  const [tags, setTags] = useState<string[]>(item.tags);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const containerChoices = containers.filter((c) => c.id !== item.id);
@@ -88,6 +96,7 @@ function Body({
           is_container: isContainer,
           container_id: isContainer ? null : containerId,
         });
+        await setItemTags(item.id, tags);
         onClose();
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err));
@@ -256,6 +265,13 @@ function Body({
               </label>
             )}
           </div>
+
+          <TagInput
+            tags={tags}
+            onChange={setTags}
+            suggestions={allTags}
+            disabled={saving || deleting}
+          />
 
           <Field
             label="why kept"

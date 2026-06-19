@@ -7,7 +7,7 @@ export async function loadItems(): Promise<DashboardItem[]> {
   const { data } = await supabase
     .from("items")
     .select(
-      "id, name, category, image_url, image_url_nobg, would_discard, views, created_at, why_kept, notes, is_container, container_id, locations(name)",
+      "id, name, category, image_url, image_url_nobg, would_discard, views, created_at, why_kept, notes, is_container, container_id, locations(name), item_tags(tags(name))",
     )
     .order("created_at", { ascending: false });
 
@@ -35,10 +35,18 @@ export async function loadItems(): Promise<DashboardItem[]> {
     return signedMap.get(k) ?? null;
   };
 
-  return rows.map((r) => ({
-    ...r,
-    image_display_url: resolve(r.image_url_nobg) ?? resolve(r.image_url),
-  })) as DashboardItem[];
+  return rows.map((r) => {
+    const { item_tags, ...rest } = r;
+    const tags = (item_tags ?? [])
+      .map((link) => link.tags?.name)
+      .filter((n): n is string => !!n)
+      .sort((a, b) => a.localeCompare(b));
+    return {
+      ...rest,
+      tags,
+      image_display_url: resolve(r.image_url_nobg) ?? resolve(r.image_url),
+    };
+  }) as DashboardItem[];
 }
 
 export async function loadLocations(): Promise<string[]> {
@@ -47,5 +55,11 @@ export async function loadLocations(): Promise<string[]> {
     .from("locations")
     .select("name")
     .order("name");
+  return (data ?? []).map((r) => r.name);
+}
+
+export async function loadTagNames(): Promise<string[]> {
+  const supabase = await createClient();
+  const { data } = await supabase.from("tags").select("name").order("name");
   return (data ?? []).map((r) => r.name);
 }

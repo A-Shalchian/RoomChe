@@ -5,7 +5,11 @@ import { AppShell } from "@/features/items/dashboard/app-shell";
 import { ColumnBrowser } from "@/features/items/dashboard/column-browser";
 import { DashboardHeader } from "@/features/items/dashboard/dashboard-header";
 import { Search } from "@/features/items/dashboard/search";
-import { loadItems, loadLocations } from "@/features/items/dashboard/load-items";
+import {
+  loadItems,
+  loadLocations,
+  loadTagNames,
+} from "@/features/items/dashboard/load-items";
 import { recordItemView } from "@/features/items/view-action";
 import { SiteFooter } from "@/components/site-footer";
 import type { Metadata } from "next";
@@ -30,7 +34,11 @@ export default async function RoomPage({
 
   if (!user) redirect("/login");
 
-  const [items, locations] = await Promise.all([loadItems(), loadLocations()]);
+  const [items, locations, allTags] = await Promise.all([
+    loadItems(),
+    loadLocations(),
+    loadTagNames(),
+  ]);
 
   if (items.length === 0) redirect("/app");
 
@@ -62,6 +70,7 @@ export default async function RoomPage({
           items={items}
           focusId={focused?.id}
           locations={locations}
+          allTags={allTags}
         />
       </div>
 
