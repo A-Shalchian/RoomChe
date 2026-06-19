@@ -1,6 +1,9 @@
 alter table public.profiles
   add column if not exists is_allowed boolean not null default false;
 
+alter table public.profiles
+  add column if not exists survey jsonb;
+
 update public.profiles set is_allowed = true;
 
 create or replace function public.handle_new_user()

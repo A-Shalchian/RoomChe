@@ -1,9 +1,19 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 
-export async function completeOnboarding() {
+const surveySchema = z.object({
+  reason: z.enum(["declutter", "catalogue", "valuables", "moving"]),
+  volume: z.enum(["little", "room", "home", "lots"]),
+  hardest: z.enum(["sentimental", "mightneed", "cost", "notime"]),
+  goal: z.string().trim().max(280).optional(),
+});
+
+export type SurveyAnswers = z.infer<typeof surveySchema>;
+
+export async function completeOnboarding(answers: SurveyAnswers) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -11,13 +21,21 @@ export async function completeOnboarding() {
 
   if (!user) redirect("/login");
 
+  const parsed = surveySchema.safeParse(answers);
+  if (!parsed.success) {
+    throw new Error("please answer every question");
+  }
+
   const { error } = await supabase
     .from("profiles")
-    .update({ onboarded_at: new Date().toISOString() })
+    .update({
+      survey: parsed.data,
+      onboarded_at: new Date().toISOString(),
+    })
     .eq("user_id", user.id);
 
   if (error) {
-    redirect(`/onboarding?error=${encodeURIComponent(error.message)}`);
+    throw new Error(error.message);
   }
 
   redirect("/app");

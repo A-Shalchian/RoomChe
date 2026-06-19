@@ -176,6 +176,7 @@ export type Database = {
           display_name: string | null
           is_allowed: boolean
           onboarded_at: string | null
+          survey: Json | null
           user_id: string
         }
         Insert: {
@@ -183,6 +184,7 @@ export type Database = {
           display_name?: string | null
           is_allowed?: boolean
           onboarded_at?: string | null
+          survey?: Json | null
           user_id: string
         }
         Update: {
@@ -190,6 +192,7 @@ export type Database = {
           display_name?: string | null
           is_allowed?: boolean
           onboarded_at?: string | null
+          survey?: Json | null
           user_id?: string
         }
         Relationships: []
