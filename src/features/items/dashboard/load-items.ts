@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import type { DashboardItem } from "./types";
 
+const MAX_ITEMS = 2000;
+
 export async function loadItems(): Promise<DashboardItem[]> {
   const supabase = await createClient();
 
@@ -9,7 +11,8 @@ export async function loadItems(): Promise<DashboardItem[]> {
     .select(
       "id, name, category, image_url, image_url_nobg, would_discard, views, created_at, why_kept, notes, is_container, container_id, locations(name), item_tags(tags(name))",
     )
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .range(0, MAX_ITEMS - 1);
 
   const rows = data ?? [];
   const isStorageKey = (k: string | null): k is string =>

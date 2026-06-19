@@ -189,19 +189,14 @@ export function ColumnBrowser({
           />
         ) : (
           visibleItems && (
-            <div className="grid grid-cols-2 gap-x-5 gap-y-8 px-5 py-5 sm:grid-cols-3 xl:grid-cols-4">
-              {visibleItems.map((item, i) => (
-                <ItemTile
-                  key={item.id}
-                  item={item}
-                  index={i}
-                  highlight={item.id === focusId}
-                  childCount={childrenByContainer.get(item.id)?.length ?? 0}
-                  onEdit={() => setEditing(item)}
-                  onOpen={() => setOpenContainer(item)}
-                />
-              ))}
-            </div>
+            <PagedGrid
+              key={`${activeCategory}:${activeLocation}:${activeTag}`}
+              items={visibleItems}
+              focusId={focusId}
+              childCountOf={(id) => childrenByContainer.get(id)?.length ?? 0}
+              onEdit={setEditing}
+              onOpen={setOpenContainer}
+            />
           )
         )}
       </Column>
@@ -250,6 +245,58 @@ function TagFilter({
           className="font-mono text-[10px] uppercase tracking-[0.14em] text-[color:var(--lv-ink-2)] transition-colors hover:[color:var(--lv-accent)]"
         >
           clear ✕
+        </button>
+      )}
+    </div>
+  );
+}
+
+const PAGE_SIZE = 24;
+
+function PagedGrid({
+  items,
+  focusId,
+  childCountOf,
+  onEdit,
+  onOpen,
+}: {
+  items: DashboardItem[];
+  focusId?: string;
+  childCountOf: (id: string) => number;
+  onEdit: (item: DashboardItem) => void;
+  onOpen: (item: DashboardItem) => void;
+}) {
+  const [shown, setShown] = useState(PAGE_SIZE);
+
+  const focusIndex = focusId ? items.findIndex((i) => i.id === focusId) : -1;
+  const need = focusIndex >= 0 ? focusIndex + 1 : 0;
+  const visible = Math.max(shown, need);
+  const page = items.slice(0, visible);
+  const remaining = items.length - page.length;
+
+  return (
+    <div className="flex flex-col gap-6 px-5 py-5">
+      <div className="grid grid-cols-2 gap-x-5 gap-y-8 sm:grid-cols-3 xl:grid-cols-4">
+        {page.map((item, i) => (
+          <ItemTile
+            key={item.id}
+            item={item}
+            index={i}
+            highlight={item.id === focusId}
+            childCount={childCountOf(item.id)}
+            onEdit={() => onEdit(item)}
+            onOpen={() => onOpen(item)}
+          />
+        ))}
+      </div>
+      {remaining > 0 && (
+        <button
+          type="button"
+          onClick={() => setShown((s) => s + PAGE_SIZE)}
+          className="self-center border-[3px] px-6 py-3 font-mono text-[10px] uppercase tracking-[0.22em] transition-colors hover:[background:var(--lv-ink)] hover:[color:var(--lv-bg)]"
+          style={{ borderColor: "var(--lv-ink)" }}
+        >
+          show {Math.min(PAGE_SIZE, remaining)} more · {remaining} left
         </button>
       )}
     </div>
