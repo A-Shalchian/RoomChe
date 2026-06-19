@@ -7,13 +7,17 @@ import type { DashboardItem } from "./types";
 
 type Verdict = "never" | "maybe" | "soon" | null;
 
+export type ContainerOption = { id: string; name: string };
+
 export function EditModal({
   item,
   locations,
+  containers,
   onClose,
 }: {
   item: DashboardItem | null;
   locations: string[];
+  containers: ContainerOption[];
   onClose: () => void;
 }) {
   return (
@@ -23,6 +27,7 @@ export function EditModal({
           key={item.id}
           item={item}
           locations={locations}
+          containers={containers}
           onClose={onClose}
         />
       )}
@@ -33,10 +38,12 @@ export function EditModal({
 function Body({
   item,
   locations,
+  containers,
   onClose,
 }: {
   item: DashboardItem;
   locations: string[];
+  containers: ContainerOption[];
   onClose: () => void;
 }) {
   const [name, setName] = useState(item.name);
@@ -45,7 +52,11 @@ function Body({
   const [verdict, setVerdict] = useState<Verdict>(item.would_discard);
   const [whyKept, setWhyKept] = useState(item.why_kept ?? "");
   const [notes, setNotes] = useState(item.notes ?? "");
+  const [isContainer, setIsContainer] = useState(item.is_container);
+  const [containerId, setContainerId] = useState<string | null>(item.container_id);
   const [confirmDelete, setConfirmDelete] = useState(false);
+
+  const containerChoices = containers.filter((c) => c.id !== item.id);
   const [saving, startSave] = useTransition();
   const [deleting, startDelete] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -74,6 +85,8 @@ function Body({
           would_discard: verdict,
           why_kept: whyKept || null,
           notes: notes || null,
+          is_container: isContainer,
+          container_id: isContainer ? null : containerId,
         });
         onClose();
       } catch (err) {
@@ -204,6 +217,44 @@ function Body({
                 </button>
               ))}
             </div>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <span className="font-mono text-[9px] uppercase tracking-[0.22em] text-[color:var(--lv-ink-2)]">
+              containment
+            </span>
+            <button
+              type="button"
+              onClick={() => setIsContainer((v) => !v)}
+              disabled={saving || deleting}
+              data-on={isContainer || undefined}
+              className="flex items-center justify-between border-[2px] px-3 py-2 font-mono text-[10px] uppercase tracking-[0.18em] transition-colors disabled:opacity-50 data-[on]:[background:var(--lv-ink)] data-[on]:[color:var(--lv-bg)]"
+              style={{ borderColor: "var(--lv-ink)" }}
+            >
+              <span>this item holds other items</span>
+              <span aria-hidden>{isContainer ? "▣" : "▢"}</span>
+            </button>
+            {!isContainer && containerChoices.length > 0 && (
+              <label className="mt-1 flex flex-col gap-1.5">
+                <span className="font-mono text-[9px] uppercase tracking-[0.22em] text-[color:var(--lv-ink-2)]">
+                  inside
+                </span>
+                <select
+                  value={containerId ?? ""}
+                  onChange={(e) => setContainerId(e.target.value || null)}
+                  disabled={saving || deleting}
+                  className="border-[2px] bg-transparent px-3 py-2 text-[14px] outline-none focus:[border-color:var(--lv-accent)] disabled:opacity-50"
+                  style={{ borderColor: "var(--lv-ink)" }}
+                >
+                  <option value="">nowhere</option>
+                  {containerChoices.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
           </div>
 
           <Field

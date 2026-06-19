@@ -7,7 +7,7 @@ export async function loadItems(): Promise<DashboardItem[]> {
   const { data } = await supabase
     .from("items")
     .select(
-      "id, name, category, image_url, image_url_nobg, would_discard, views, created_at, why_kept, notes, locations(name)",
+      "id, name, category, image_url, image_url_nobg, would_discard, views, created_at, why_kept, notes, is_container, container_id, locations(name)",
     )
     .order("created_at", { ascending: false });
 

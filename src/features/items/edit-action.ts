@@ -12,7 +12,33 @@ export type EditPayload = {
   would_discard: "never" | "maybe" | "soon" | null;
   why_kept: string | null;
   notes: string | null;
+  is_container: boolean;
+  container_id: string | null;
 };
+
+async function wouldCycle(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  itemId: string,
+  containerId: string,
+): Promise<boolean> {
+  let current: string | null = containerId;
+  const seen = new Set<string>();
+  while (current) {
+    if (current === itemId) return true;
+    if (seen.has(current)) return true;
+    seen.add(current);
+    const { data }: { data: { container_id: string | null } | null } =
+      await supabase
+        .from("items")
+        .select("container_id")
+        .eq("id", current)
+        .eq("user_id", userId)
+        .maybeSingle();
+    current = data?.container_id ?? null;
+  }
+  return false;
+}
 
 export async function updateItem(payload: EditPayload) {
   const supabase = await createClient();
@@ -47,6 +73,28 @@ export async function updateItem(payload: EditPayload) {
     }
   }
 
+  const containerId = payload.container_id;
+  if (containerId) {
+    if (containerId === payload.id) {
+      throw new Error("an item cannot contain itself");
+    }
+    const { data: parent } = await supabase
+      .from("items")
+      .select("is_container")
+      .eq("id", containerId)
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (!parent) {
+      throw new Error("container not found");
+    }
+    if (!parent.is_container) {
+      throw new Error("target is not a container");
+    }
+    if (await wouldCycle(supabase, user.id, payload.id, containerId)) {
+      throw new Error("that would nest a container inside itself");
+    }
+  }
+
   const { error } = await supabase
     .from("items")
     .update({
@@ -56,11 +104,21 @@ export async function updateItem(payload: EditPayload) {
       would_discard: payload.would_discard,
       why_kept: payload.why_kept?.trim() || null,
       notes: payload.notes?.trim() || null,
+      is_container: payload.is_container,
+      container_id: containerId,
     })
     .eq("id", payload.id)
     .eq("user_id", user.id);
 
   if (error) throw new Error(`update: ${error.message}`);
+
+  if (!payload.is_container) {
+    await supabase
+      .from("items")
+      .update({ container_id: null })
+      .eq("container_id", payload.id)
+      .eq("user_id", user.id);
+  }
 
   revalidatePath("/app");
   revalidatePath("/app/room");

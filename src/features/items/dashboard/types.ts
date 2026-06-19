@@ -10,6 +10,8 @@ export type DashboardItem = {
   created_at: string;
   why_kept: string | null;
   notes: string | null;
+  is_container: boolean;
+  container_id: string | null;
   locations: { name: string } | null;
 };
 
