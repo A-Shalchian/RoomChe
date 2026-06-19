@@ -71,7 +71,7 @@ export function DotBloomLogin({ error }: { error?: string }) {
               color: "var(--lv-accent)",
             }}
           >
-            {error}
+            {error === "closed" ? "this app is private. signups are closed." : error}
           </p>
         )}
       </div>
