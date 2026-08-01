@@ -8,6 +8,7 @@ import {
   type ScanSubject,
 } from "@/features/items/capture/scan-targets";
 import { useScanSet } from "@/features/items/capture/use-scan-set";
+import { ScanAdvice } from "./scan-advice";
 import { ScanReportPanel } from "./scan-report-panel";
 
 export function ScanImport() {
@@ -28,6 +29,8 @@ export function ScanImport() {
         </span>
         photo scan · full resolution
       </header>
+
+      <ScanAdvice onSubject={setSubject} disabled={busy} />
 
       <div className="flex flex-wrap gap-1.5">
         {SCAN_SUBJECTS.map((option) => (
