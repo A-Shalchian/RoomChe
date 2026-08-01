@@ -4,7 +4,7 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { font } from "@/features/theme/config";
-import { CameraCapture } from "./camera-capture";
+import { CameraCapture, type CapturedShot } from "./camera-capture";
 import { ProcessModal } from "@/features/items/dashboard/process-modal";
 import { Boards } from "./boards";
 import { Search } from "./search";
@@ -13,7 +13,7 @@ import type { DashboardItem } from "./types";
 
 type PendingInput =
   | { kind: "file"; file: File }
-  | { kind: "camera"; dataUrl: string }
+  | { kind: "camera"; shots: CapturedShot[] }
   | null;
 
 function nudge(count: number): string {
@@ -130,9 +130,9 @@ function LeftPane({
       <CameraCapture
         open={camera}
         onClose={() => setCamera(false)}
-        onCapture={(dataUrl) => {
+        onCapture={(shots) => {
           setCamera(false);
-          setPendingInput({ kind: "camera", dataUrl });
+          setPendingInput({ kind: "camera", shots });
         }}
       />
       <ProcessModal

@@ -1,19 +1,23 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { uploadExtraAngles, removeAngles } from "@/features/items/angle-upload";
+import type { CaptureAngle } from "@/features/items/capture/angles";
 import { processItem } from "@/features/items/process-action";
 import { saveProcessedItem } from "@/features/items/save-action";
 
 const DB_NAME = "roomche-queue";
 const STORE = "jobs";
-const VERSION = 1;
+const VERSION = 3;
 const CONCURRENCY = 2;
 
 export type JobStatus = "pending" | "running" | "failed" | "done";
 
+export type JobShot = { blob: Blob; angle: CaptureAngle };
+
 export type Job = {
   id: string;
-  blob: Blob;
+  shots: JobShot[];
   status: JobStatus;
   error?: string;
   createdAt: number;
@@ -27,9 +31,10 @@ function openDb(): Promise<IDBDatabase> {
     const req = indexedDB.open(DB_NAME, VERSION);
     req.onupgradeneeded = () => {
       const db = req.result;
-      if (!db.objectStoreNames.contains(STORE)) {
-        db.createObjectStore(STORE, { keyPath: "id" });
+      if (db.objectStoreNames.contains(STORE)) {
+        db.deleteObjectStore(STORE);
       }
+      db.createObjectStore(STORE, { keyPath: "id" });
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
@@ -67,10 +72,11 @@ async function removeJob(id: string): Promise<void> {
   await tx("readwrite", (s) => s.delete(id));
 }
 
-export async function enqueue(blob: Blob): Promise<void> {
+export async function enqueue(shots: JobShot[]): Promise<void> {
+  if (shots.length === 0) return;
   const job: Job = {
     id: crypto.randomUUID(),
-    blob,
+    shots: [...shots].sort((a, b) => rank(a.angle) - rank(b.angle)),
     status: "pending",
     createdAt: Date.now(),
   };
@@ -94,6 +100,10 @@ export async function clearDone(): Promise<void> {
   emit();
 }
 
+function rank(angle: CaptureAngle): number {
+  return angle === "front" ? 0 : 1;
+}
+
 const listeners = new Set<() => void>();
 
 function emit() {
@@ -109,19 +119,27 @@ async function runJob(job: Job): Promise<void> {
   await putJob({ ...job, status: "running" });
   emit();
   try {
-    const file = new File([job.blob], `capture-${job.id}.jpg`, {
-      type: job.blob.type || "image/jpeg",
+    const [primary, ...extras] = job.shots;
+    const file = new File([primary.blob], `capture-${job.id}.jpg`, {
+      type: primary.blob.type || "image/jpeg",
     });
     const fd = new FormData();
     fd.append("photo", file);
     const result = await processItem(fd);
     if (!result.ok) throw new Error(result.error);
-    await saveProcessedItem({
-      nobgDataUrl: result.nobgDataUrl,
-      name: result.name,
-      category: result.category,
-      location: result.location,
-    });
+    const extraImages = await uploadExtraAngles(extras);
+    try {
+      await saveProcessedItem({
+        nobgDataUrl: result.nobgDataUrl,
+        name: result.name,
+        category: result.category,
+        location: result.location,
+        extraImages,
+      });
+    } catch (err) {
+      await removeAngles(extraImages.map((e) => e.key));
+      throw err;
+    }
     await removeJob(job.id);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

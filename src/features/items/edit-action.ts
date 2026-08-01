@@ -138,6 +138,12 @@ export async function deleteItem(id: string) {
     .eq("user_id", user.id)
     .maybeSingle();
 
+  const { data: angles } = await supabase
+    .from("item_images")
+    .select("image_url")
+    .eq("item_id", id)
+    .eq("user_id", user.id);
+
   const { error } = await supabase
     .from("items")
     .delete()
@@ -146,15 +152,16 @@ export async function deleteItem(id: string) {
 
   if (error) throw new Error(`delete: ${error.message}`);
 
-  if (item) {
-    const keys = new Set<string>();
-    if (item.image_url && !item.image_url.startsWith("http"))
-      keys.add(item.image_url);
-    if (item.image_url_nobg && !item.image_url_nobg.startsWith("http"))
-      keys.add(item.image_url_nobg);
-    if (keys.size > 0) {
-      await supabase.storage.from("item-images").remove(Array.from(keys));
-    }
+  const keys = new Set<string>();
+  if (item?.image_url && !item.image_url.startsWith("http"))
+    keys.add(item.image_url);
+  if (item?.image_url_nobg && !item.image_url_nobg.startsWith("http"))
+    keys.add(item.image_url_nobg);
+  for (const a of angles ?? []) {
+    if (!a.image_url.startsWith("http")) keys.add(a.image_url);
+  }
+  if (keys.size > 0) {
+    await supabase.storage.from("item-images").remove(Array.from(keys));
   }
 
   revalidatePath("/app");

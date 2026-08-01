@@ -2,11 +2,12 @@
 
 import { motion, AnimatePresence } from "motion/react";
 import { useEffect, useState } from "react";
-import { enqueue } from "./process-queue";
+import type { CapturedShot } from "./camera-capture";
+import { enqueue, type JobShot } from "./process-queue";
 
 type Input =
   | { kind: "file"; file: File }
-  | { kind: "camera"; dataUrl: string };
+  | { kind: "camera"; shots: CapturedShot[] };
 
 export function ProcessModal({
   input,
@@ -52,7 +53,7 @@ function ModalBody({
         URL.revokeObjectURL(url);
       };
     }
-    const url = input.dataUrl;
+    const url = input.shots[0]?.dataUrl ?? null;
     const id = requestAnimationFrame(() => setRawUrl(url));
     return () => cancelAnimationFrame(id);
   }, [input]);
@@ -65,23 +66,25 @@ function ModalBody({
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose, submitting]);
 
+  async function toShots(): Promise<JobShot[]> {
+    if (input.kind === "file") return [{ blob: input.file, angle: "front" }];
+    return Promise.all(
+      input.shots.map(async (shot) => ({
+        blob: await (await fetch(shot.dataUrl)).blob(),
+        angle: shot.angle,
+      })),
+    );
+  }
+
   async function enqueueAndContinue() {
     setSubmitting(true);
-    const blob =
-      input.kind === "file"
-        ? input.file
-        : await (await fetch(input.dataUrl)).blob();
-    await enqueue(blob);
+    await enqueue(await toShots());
     onContinue(input.kind);
   }
 
   async function enqueueAndClose() {
     setSubmitting(true);
-    const blob =
-      input.kind === "file"
-        ? input.file
-        : await (await fetch(input.dataUrl)).blob();
-    await enqueue(blob);
+    await enqueue(await toShots());
     onClose();
   }
 
@@ -125,12 +128,24 @@ function ModalBody({
         </div>
 
         <div
-          className="flex aspect-square w-full items-center justify-center overflow-hidden border-b-[3px]"
+          className="relative flex aspect-square w-full items-center justify-center overflow-hidden border-b-[3px]"
           style={{ borderColor: "var(--lv-ink)", background: "var(--lv-ink)" }}
         >
           {rawUrl && (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={rawUrl} alt="" className="h-full w-full object-cover" />
+          )}
+          {input.kind === "camera" && input.shots.length > 1 && (
+            <span
+              className="absolute bottom-2 right-2 border-[2px] px-2 py-1 font-mono text-[10px] uppercase tracking-[0.18em]"
+              style={{
+                borderColor: "var(--lv-ink)",
+                background: "var(--lv-bg)",
+                color: "var(--lv-ink)",
+              }}
+            >
+              {input.shots.length} angles
+            </span>
           )}
         </div>
 

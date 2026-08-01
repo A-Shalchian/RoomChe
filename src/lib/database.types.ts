@@ -50,6 +50,44 @@ export type Database = {
           },
         ]
       }
+      item_images: {
+        Row: {
+          angle: string
+          created_at: string
+          id: string
+          image_url: string
+          item_id: string
+          position: number
+          user_id: string
+        }
+        Insert: {
+          angle?: string
+          created_at?: string
+          id?: string
+          image_url: string
+          item_id: string
+          position?: number
+          user_id: string
+        }
+        Update: {
+          angle?: string
+          created_at?: string
+          id?: string
+          image_url?: string
+          item_id?: string
+          position?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "item_images_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       item_tags: {
         Row: {
           item_id: string

@@ -4,12 +4,12 @@ import { motion, AnimatePresence } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { signOut } from "@/features/auth/actions";
 import { useTheme } from "@/features/theme/use-theme";
-import { CameraCapture } from "./camera-capture";
+import { CameraCapture, type CapturedShot } from "./camera-capture";
 import { ProcessModal } from "./process-modal";
 
 type PendingInput =
   | { kind: "file"; file: File }
-  | { kind: "camera"; dataUrl: string }
+  | { kind: "camera"; shots: CapturedShot[] }
   | null;
 
 export function UserMenu({ email }: { email: string | undefined }) {
@@ -150,9 +150,9 @@ export function UserMenu({ email }: { email: string | undefined }) {
       <CameraCapture
         open={camera}
         onClose={() => setCamera(false)}
-        onCapture={(dataUrl) => {
+        onCapture={(shots) => {
           setCamera(false);
-          setPendingInput({ kind: "camera", dataUrl });
+          setPendingInput({ kind: "camera", shots });
         }}
       />
       <ProcessModal

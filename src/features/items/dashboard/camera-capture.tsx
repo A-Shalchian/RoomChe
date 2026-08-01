@@ -1,9 +1,14 @@
 "use client";
 
 import { motion, AnimatePresence } from "motion/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect } from "react";
+import type { CaptureAngle } from "@/features/items/capture/angles";
+import { resolveAngle } from "@/features/items/capture/coverage";
+import { useCamera } from "@/features/items/capture/use-camera";
+import { useShotReview } from "@/features/items/capture/use-shot-review";
+import { CaptureCoach } from "./capture-coach";
 
-type Status = "idle" | "requesting" | "live" | "shot" | "denied";
+export type CapturedShot = { dataUrl: string; angle: CaptureAngle };
 
 export function CameraCapture({
   open,
@@ -12,48 +17,15 @@ export function CameraCapture({
 }: {
   open: boolean;
   onClose: () => void;
-  onCapture: (dataUrl: string) => void;
+  onCapture: (shots: CapturedShot[]) => void;
 }) {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const [status, setStatus] = useState<Status>("idle");
-  const [shot, setShot] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  const stop = useCallback(() => {
-    streamRef.current?.getTracks().forEach((t) => t.stop());
-    streamRef.current = null;
-  }, []);
-
-  const start = useCallback(async () => {
-    setError(null);
-    setShot(null);
-    setStatus("requesting");
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: "environment" } },
-        audio: false,
-      });
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-      }
-      setStatus("live");
-    } catch {
-      setStatus("denied");
-      setError("camera access blocked. allow it in your browser, then retry.");
-    }
-  }, []);
+  const { videoRef, status, error, start, grab } = useCamera(open);
+  const review = useShotReview();
+  const { pending, all, coverage, nextAngle, reset } = review;
 
   useEffect(() => {
-    if (!open) return;
-    const id = requestAnimationFrame(() => start());
-    return () => {
-      cancelAnimationFrame(id);
-      stop();
-    };
-  }, [open, start, stop]);
+    if (open) reset();
+  }, [open, reset]);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -63,23 +35,26 @@ export function CameraCapture({
     return () => document.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  function capture() {
-    const video = videoRef.current;
-    if (!video) return;
-    const canvas = document.createElement("canvas");
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    ctx.drawImage(video, 0, 0);
-    setShot(canvas.toDataURL("image/jpeg", 0.92));
-    setStatus("shot");
-    stop();
+  function shoot() {
+    const frame = grab();
+    if (frame) review.capture(frame.canvas, frame.dataUrl, nextAngle);
   }
 
-  function keep() {
-    if (!shot) return;
-    onCapture(shot);
+  function retake() {
+    review.discard();
+    void start();
+  }
+
+  function keepGoing() {
+    review.accept();
+    void start();
+  }
+
+  function finish() {
+    if (all.length === 0) return;
+    onCapture(
+      all.map((shot) => ({ dataUrl: shot.dataUrl, angle: resolveAngle(shot) })),
+    );
   }
 
   return (
@@ -99,7 +74,7 @@ export function CameraCapture({
             animate={{ scale: 1, y: 0 }}
             exit={{ scale: 0.94, y: 12 }}
             transition={{ duration: 0.28, ease: [0.2, 0.65, 0.3, 1] }}
-            className="relative w-full max-w-xl border-[3px]"
+            className="relative max-h-[92vh] w-full max-w-xl overflow-y-auto border-[3px]"
             style={{ borderColor: "var(--lv-ink)", background: "var(--lv-bg)" }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -113,7 +88,12 @@ export function CameraCapture({
                   className="inline-block h-2 w-2 rounded-full"
                   style={{ background: "var(--lv-accent)" }}
                 />
-                capture
+                capture · {nextAngle}
+                {all.length > 0 && (
+                  <span style={{ color: "var(--lv-accent)" }}>
+                    {all.length} shot{all.length === 1 ? "" : "s"}
+                  </span>
+                )}
               </span>
               <button
                 type="button"
@@ -129,9 +109,13 @@ export function CameraCapture({
               className="relative aspect-[4/3] w-full overflow-hidden"
               style={{ background: "var(--lv-ink)" }}
             >
-              {shot ? (
+              {pending ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={shot} alt="captured" className="h-full w-full object-cover" />
+                <img
+                  src={pending.dataUrl}
+                  alt="captured"
+                  className="h-full w-full object-cover"
+                />
               ) : (
                 <video
                   ref={videoRef}
@@ -141,7 +125,7 @@ export function CameraCapture({
                 />
               )}
 
-              {(status === "requesting" || status === "denied") && (
+              {!pending && (status === "requesting" || status === "denied") && (
                 <div className="absolute inset-0 flex items-center justify-center px-8 text-center">
                   <p
                     className="font-mono text-[11px] uppercase tracking-[0.18em]"
@@ -155,35 +139,50 @@ export function CameraCapture({
               )}
             </div>
 
+            <CaptureCoach
+              coverage={coverage}
+              pending={pending}
+              nextAngle={nextAngle}
+            />
+
             <div
               className="flex items-center justify-between gap-3 border-t-[3px] px-4 py-3"
               style={{ borderColor: "var(--lv-ink)" }}
             >
-              {status === "shot" ? (
+              {pending ? (
                 <>
-                  <FooterButton onClick={start}>retake</FooterButton>
-                  <FooterButton onClick={keep} solid>
-                    use this →
+                  <FooterButton onClick={retake}>retake</FooterButton>
+                  <FooterButton onClick={keepGoing}>keep · next angle</FooterButton>
+                  <FooterButton onClick={finish} solid>
+                    done ({all.length}) →
                   </FooterButton>
                 </>
               ) : status === "denied" ? (
-                <FooterButton onClick={start} solid>
+                <FooterButton onClick={() => void start()} solid>
                   retry
                 </FooterButton>
               ) : (
-                <button
-                  type="button"
-                  onClick={capture}
-                  disabled={status !== "live"}
-                  aria-label="take photo"
-                  className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border-[3px] transition-transform hover:scale-105 disabled:opacity-40"
-                  style={{ borderColor: "var(--lv-ink)" }}
-                >
-                  <span
-                    className="block h-8 w-8 rounded-full"
-                    style={{ background: "var(--lv-accent)" }}
-                  />
-                </button>
+                <>
+                  {all.length > 0 && <span aria-hidden className="w-20" />}
+                  <button
+                    type="button"
+                    onClick={shoot}
+                    disabled={status !== "live"}
+                    aria-label="take photo"
+                    className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border-[3px] transition-transform hover:scale-105 disabled:opacity-40"
+                    style={{ borderColor: "var(--lv-ink)" }}
+                  >
+                    <span
+                      className="block h-8 w-8 rounded-full"
+                      style={{ background: "var(--lv-accent)" }}
+                    />
+                  </button>
+                  {all.length > 0 && (
+                    <FooterButton onClick={finish} solid>
+                      done ({all.length}) →
+                    </FooterButton>
+                  )}
+                </>
               )}
             </div>
           </motion.div>
