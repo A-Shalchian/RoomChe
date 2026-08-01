@@ -94,6 +94,11 @@ export async function retryFailed(): Promise<void> {
   emit();
 }
 
+export async function dismissJob(id: string): Promise<void> {
+  await removeJob(id);
+  emit();
+}
+
 export async function clearDone(): Promise<void> {
   const jobs = await getAll();
   await Promise.all(jobs.filter((j) => j.status === "done").map((j) => removeJob(j.id)));
@@ -190,12 +195,21 @@ async function drain(): Promise<void> {
   }
 }
 
+export type JobSummary = {
+  id: string;
+  status: JobStatus;
+  error?: string;
+  shots: number;
+  createdAt: number;
+};
+
 export type QueueSnapshot = {
   pending: number;
   running: number;
   failed: number;
   done: number;
   total: number;
+  jobs: JobSummary[];
 };
 
 function snapshotFrom(jobs: Job[]): QueueSnapshot {
@@ -215,6 +229,15 @@ function snapshotFrom(jobs: Job[]): QueueSnapshot {
     failed,
     done,
     total: pending + running + failed + done,
+    jobs: [...jobs]
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .map((j) => ({
+        id: j.id,
+        status: j.status,
+        error: j.error,
+        shots: j.shots.length,
+        createdAt: j.createdAt,
+      })),
   };
 }
 
@@ -225,6 +248,7 @@ export function useProcessQueue() {
     failed: 0,
     done: 0,
     total: 0,
+    jobs: [],
   });
 
   const refresh = useCallback(async () => {
@@ -242,5 +266,5 @@ export function useProcessQueue() {
     };
   }, [refresh]);
 
-  return { snap, retryFailed, clearDone };
+  return { snap, retryFailed, clearDone, dismissJob };
 }

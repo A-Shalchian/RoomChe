@@ -41,7 +41,7 @@ export function useShotReview() {
         critiquing: true,
       };
       setPending(shot);
-      void critiqueShot(dataUrl, angle).then((result) => {
+      void critiqueShot(shrink(canvas), angle).then((result) => {
         patch(shot.id, {
           critiquing: false,
           critique: result.ok ? result.critique : null,
@@ -66,4 +66,21 @@ export function useShotReview() {
   }, []);
 
   return { kept, pending, all, coverage, nextAngle, capture, accept, discard, reset };
+}
+
+const CRITIQUE_MAX_DIM = 1024;
+
+function shrink(source: HTMLCanvasElement): string {
+  const scale = Math.min(
+    1,
+    CRITIQUE_MAX_DIM / Math.max(source.width, source.height),
+  );
+  if (scale === 1) return source.toDataURL("image/jpeg", 0.8);
+  const small = document.createElement("canvas");
+  small.width = Math.round(source.width * scale);
+  small.height = Math.round(source.height * scale);
+  const ctx = small.getContext("2d");
+  if (!ctx) return source.toDataURL("image/jpeg", 0.8);
+  ctx.drawImage(source, 0, 0, small.width, small.height);
+  return small.toDataURL("image/jpeg", 0.8);
 }

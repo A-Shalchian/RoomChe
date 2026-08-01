@@ -7,6 +7,8 @@ import io
 
 session = new_session("u2net")
 
+MAX_DIM = 1600
+
 def keep_largest(img):
     a = np.array(img)
     alpha = a[:, :, 3] > 30
@@ -28,6 +30,11 @@ def process(src, dst):
     bbox = img.getbbox()
     if bbox:
         img = img.crop(bbox)
+    if max(img.size) > MAX_DIM:
+        scale = MAX_DIM / max(img.size)
+        img = img.resize(
+            (round(img.width * scale), round(img.height * scale)), Image.LANCZOS
+        )
     img.save(dst)
     print(f"{src} -> {dst}  ({img.width}x{img.height})")
 

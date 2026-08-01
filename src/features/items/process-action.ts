@@ -79,6 +79,19 @@ export async function cutOutBackground(
   }
 }
 
+const NULLS = new RegExp(String.fromCharCode(0), "g");
+const ANSI = new RegExp(`${String.fromCharCode(27)}\[[0-9;]*[A-Za-z]`, "g");
+
+function readableError(raw: string): string {
+  const lines = raw
+    .replace(NULLS, "")
+    .replace(ANSI, "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  return (lines.at(-1) ?? "unknown failure").slice(0, 200);
+}
+
 function runPython(src: string, dst: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const script = path.join(process.cwd(), "scripts", "bg-remove.py");
@@ -88,7 +101,7 @@ function runPython(src: string, dst: string): Promise<void> {
     child.on("error", reject);
     child.on("close", (code) => {
       if (code === 0) resolve();
-      else reject(new Error(`bg-remove exited ${code}: ${stderr.slice(0, 400)}`));
+      else reject(new Error(`bg-remove exited ${code}: ${readableError(stderr)}`));
     });
   });
 }
