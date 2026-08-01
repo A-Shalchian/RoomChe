@@ -69,7 +69,7 @@ def reconstruct(scan_dir, max_dim, with_masks):
         "--database_path", str(db),
         "--image_path", str(scan_dir / WORK),
         "--ImageReader.single_camera", "1",
-        "--SiftExtraction.max_image_size", str(max_dim),
+        "--FeatureExtraction.max_image_size", str(max_dim),
     ]
     if with_masks:
         extract += ["--ImageReader.mask_path", str(scan_dir / MASKS)]

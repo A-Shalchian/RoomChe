@@ -30,7 +30,11 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
-  allowedDevOrigins: ["*.trycloudflare.com", "*.ts.net"],
+  allowedDevOrigins: [
+    "*.trycloudflare.com",
+    "arash-1.taila27654.ts.net",
+    "*.taila27654.ts.net",
+  ],
   experimental: {
     proxyClientMaxBodySize: "64mb",
   },
