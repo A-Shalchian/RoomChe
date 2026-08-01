@@ -27,7 +27,7 @@ export const themes: Record<Mode, Theme> = {
     mode: "light",
     bg: "#eef4f2",
     ink: "#06222a",
-    ink2: "rgba(6,34,42,0.55)",
+    ink2: "rgba(6,34,42,0.72)",
     accent: "#d2562b",
     rule: "rgba(6,34,42,0.18)",
   },

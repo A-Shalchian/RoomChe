@@ -147,10 +147,7 @@ function Note({
 }) {
   return (
     <p className="flex gap-2 font-mono text-[10px] uppercase tracking-[0.16em] leading-relaxed">
-      <span
-        className="shrink-0"
-        style={{ color: "color-mix(in srgb, var(--lv-ink) 50%, transparent)" }}
-      >
+      <span className="shrink-0" style={{ color: "var(--lv-ink-2)" }}>
         {label}
       </span>
       <span style={{ color: accent ? "var(--lv-accent)" : "var(--lv-ink)" }}>

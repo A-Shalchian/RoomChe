@@ -106,14 +106,14 @@ function AngleChip({
     <span
       className="border-[2px] px-2 py-1 font-mono text-[10px] uppercase tracking-[0.18em]"
       style={{
-        borderColor: state === "todo" ? "color-mix(in srgb, var(--lv-ink) 35%, transparent)" : "var(--lv-ink)",
+        borderColor: state === "todo" ? "var(--lv-rule)" : "var(--lv-ink)",
         background: state === "done" ? "var(--lv-ink)" : "transparent",
         color:
           state === "done"
             ? "var(--lv-bg)"
             : state === "next"
               ? "var(--lv-accent)"
-              : "color-mix(in srgb, var(--lv-ink) 45%, transparent)",
+              : "var(--lv-ink-2)",
       }}
     >
       {angle}
@@ -132,9 +132,7 @@ function Line({
 }) {
   return (
     <p className="flex gap-2 font-mono text-[10px] uppercase tracking-[0.16em] leading-relaxed">
-      <span style={{ color: "color-mix(in srgb, var(--lv-ink) 50%, transparent)" }}>
-        {label}
-      </span>
+      <span style={{ color: "var(--lv-ink-2)" }}>{label}</span>
       <span style={{ color: accent ? "var(--lv-accent)" : "var(--lv-ink)" }}>
         {children}
       </span>

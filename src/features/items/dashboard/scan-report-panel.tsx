@@ -63,9 +63,7 @@ function Stat({
 }) {
   return (
     <div className="flex justify-between gap-2 font-mono text-[10px] uppercase tracking-[0.16em]">
-      <dt style={{ color: "color-mix(in srgb, var(--lv-ink) 50%, transparent)" }}>
-        {label}
-      </dt>
+      <dt style={{ color: "var(--lv-ink-2)" }}>{label}</dt>
       <dd style={{ color: bad ? "var(--lv-accent)" : "var(--lv-ink)" }}>{value}</dd>
     </div>
   );
