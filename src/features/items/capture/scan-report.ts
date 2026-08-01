@@ -43,7 +43,8 @@ export function buildReport(
   }
   const typical = median(steps);
   const gapLimit = Math.max(GAP_FLOOR, typical * GAP_FACTOR);
-  const gaps = steps.filter((d) => d > gapLimit).length;
+  const jumps = steps.filter((d) => d > gapLimit).length;
+  const gaps = Math.max(0, jumps - (target.flip ? 1 : 0));
   const duplicates = steps.filter((d) => d <= DUPE_BITS).length;
 
   const drift = stdDev(ordered.map((f) => f.luma));
@@ -104,8 +105,11 @@ function notes(input: {
   }
   if (gaps > 0) {
     out.push(
-      `${gaps} jump${gaps === 1 ? "" : "s"} in the orbit, you moved too far between shots there`,
+      `${gaps} jump${gaps === 1 ? "" : "s"} in the orbit beyond the flip, you moved too far between shots there`,
     );
+  }
+  if (target.flip && count >= target.min) {
+    out.push("both halves must overlap on the sides or they will not merge");
   }
   if (soft.length > 0) {
     out.push(`${soft.length} soft frame${soft.length === 1 ? "" : "s"}, reshoot or drop them`);

@@ -17,7 +17,7 @@ def fail(message):
     sys.exit(1)
 
 
-def prepare_images(scan_dir, max_dim):
+def prepare_images(scan_dir, max_dim, with_masks):
     raw_dir = scan_dir / RAW
     work_dir = scan_dir / WORK
     mask_dir = scan_dir / MASKS
@@ -26,8 +26,10 @@ def prepare_images(scan_dir, max_dim):
         fail(f"no photos in {raw_dir}")
 
     work_dir.mkdir(exist_ok=True)
-    mask_dir.mkdir(exist_ok=True)
-    session = new_session("u2net")
+    session = None
+    if with_masks:
+        mask_dir.mkdir(exist_ok=True)
+        session = new_session("u2net")
 
     for i, photo in enumerate(photos, 1):
         image = Image.open(photo).convert("RGB")
@@ -39,9 +41,10 @@ def prepare_images(scan_dir, max_dim):
             )
         image.save(work_dir / photo.name, quality=95)
 
-        cut = remove(image, session=session)
-        alpha = cut.getchannel("A").point(lambda v: 255 if v > 30 else 0)
-        alpha.save(mask_dir / f"{photo.name}.png")
+        if session is not None:
+            cut = remove(image, session=session)
+            alpha = cut.getchannel("A").point(lambda v: 255 if v > 30 else 0)
+            alpha.save(mask_dir / f"{photo.name}.png")
         print(f"[{i}/{len(photos)}] {photo.name}")
 
     return len(photos)
@@ -54,21 +57,23 @@ def colmap(args, cwd):
         fail(f"colmap {args[0]} exited {result.returncode}")
 
 
-def reconstruct(scan_dir, max_dim):
+def reconstruct(scan_dir, max_dim, with_masks):
     db = scan_dir / "colmap.db"
     sparse = scan_dir / "sparse"
     dense = scan_dir / "dense"
     sparse.mkdir(exist_ok=True)
     dense.mkdir(exist_ok=True)
 
-    colmap([
+    extract = [
         "feature_extractor",
         "--database_path", str(db),
         "--image_path", str(scan_dir / WORK),
-        "--ImageReader.mask_path", str(scan_dir / MASKS),
         "--ImageReader.single_camera", "1",
         "--SiftExtraction.max_image_size", str(max_dim),
-    ], scan_dir)
+    ]
+    if with_masks:
+        extract += ["--ImageReader.mask_path", str(scan_dir / MASKS)]
+    colmap(extract, scan_dir)
 
     colmap(["exhaustive_matcher", "--database_path", str(db)], scan_dir)
 
@@ -119,9 +124,19 @@ def main():
         help="longest edge fed to COLMAP, lower this if the GPU runs out of memory",
     )
     parser.add_argument(
-        "--skip-masks",
+        "--masks",
         action="store_true",
-        help="reuse masks and resized copies from a previous run",
+        help=(
+            "cut the background out before matching. Needed when the object was "
+            "flipped mid-shoot, because the background no longer agrees with it. "
+            "Leave it off for a single-side shoot, where background features help "
+            "the solve."
+        ),
+    )
+    parser.add_argument(
+        "--reuse",
+        action="store_true",
+        help="reuse the resized copies and masks from a previous run",
     )
     args = parser.parse_args()
 
@@ -134,15 +149,15 @@ def main():
             "https://github.com/colmap/colmap/releases and add its folder to PATH."
         )
 
-    if args.skip_masks:
+    if args.reuse:
         count = len(list((scan_dir / WORK).iterdir()))
     else:
-        count = prepare_images(scan_dir, args.max_dim)
+        count = prepare_images(scan_dir, args.max_dim, args.masks)
 
     if count < 30:
         print(f"warning: only {count} photos, expect holes", file=sys.stderr)
 
-    mesh = reconstruct(scan_dir, args.max_dim)
+    mesh = reconstruct(scan_dir, args.max_dim, args.masks)
     print(f"\nmesh: {mesh}")
 
 

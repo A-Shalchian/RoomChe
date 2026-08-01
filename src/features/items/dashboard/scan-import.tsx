@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import {
+  reconstructCommand,
   SCAN_SUBJECTS,
   SCAN_TARGETS,
   type ScanSubject,
@@ -10,7 +11,7 @@ import { useScanSet } from "@/features/items/capture/use-scan-set";
 import { ScanReportPanel } from "./scan-report-panel";
 
 export function ScanImport() {
-  const [subject, setSubject] = useState<ScanSubject>("small-simple");
+  const [subject, setSubject] = useState<ScanSubject>("ground-rigid");
   const inputRef = useRef<HTMLInputElement>(null);
   const scan = useScanSet(subject);
   const target = SCAN_TARGETS[subject];
@@ -47,9 +48,15 @@ export function ScanImport() {
         ))}
       </div>
 
-      <p className="font-mono text-[10px] uppercase tracking-[0.16em] leading-relaxed">
-        {target.example} · {target.rings}
-      </p>
+      <div className="flex flex-col gap-1.5">
+        <Note label="shoot">{target.protocol}</Note>
+        <Note label="under it">{target.backdrop}</Note>
+        {target.caveat && (
+          <Note label="know" accent>
+            {target.caveat}
+          </Note>
+        )}
+      </div>
 
       <input
         ref={inputRef}
@@ -115,14 +122,41 @@ export function ScanImport() {
 
       {scan.phase === "done" && scan.setId && (
         <div className="flex flex-col gap-2">
-          <p className="font-mono text-[10px] uppercase tracking-[0.16em] leading-relaxed">
-            stored in .scans/{scan.setId}/raw · run the reconstruct script against
-            that folder
-          </p>
+          <Note label="next">run this on the workstation</Note>
+          <code
+            className="select-all border-[2px] px-3 py-2 font-mono text-[10px] leading-relaxed"
+            style={{ borderColor: "var(--lv-ink)" }}
+          >
+            {reconstructCommand(scan.setId, subject)}
+          </code>
           <Action onClick={scan.clear}>scan another object</Action>
         </div>
       )}
     </section>
+  );
+}
+
+function Note({
+  label,
+  children,
+  accent,
+}: {
+  label: string;
+  children: React.ReactNode;
+  accent?: boolean;
+}) {
+  return (
+    <p className="flex gap-2 font-mono text-[10px] uppercase tracking-[0.16em] leading-relaxed">
+      <span
+        className="shrink-0"
+        style={{ color: "color-mix(in srgb, var(--lv-ink) 50%, transparent)" }}
+      >
+        {label}
+      </span>
+      <span style={{ color: accent ? "var(--lv-accent)" : "var(--lv-ink)" }}>
+        {children}
+      </span>
+    </p>
   );
 }
 
