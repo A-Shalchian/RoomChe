@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { uploadExtraAngles, removeAngles } from "@/features/items/angle-upload";
 import type { CaptureAngle } from "@/features/items/capture/angles";
-import { processItem } from "@/features/items/process-action";
+import { cutOutBackground, processItem } from "@/features/items/process-action";
 import { saveProcessedItem } from "@/features/items/save-action";
 
 const DB_NAME = "roomche-queue";
@@ -104,6 +104,29 @@ function rank(angle: CaptureAngle): number {
   return angle === "front" ? 0 : 1;
 }
 
+async function cutOutExtras(
+  extras: JobShot[],
+  jobId: string,
+): Promise<JobShot[]> {
+  const out: JobShot[] = [];
+  for (const [i, shot] of extras.entries()) {
+    const fd = new FormData();
+    fd.append(
+      "photo",
+      new File([shot.blob], `${jobId}-${i}.jpg`, {
+        type: shot.blob.type || "image/jpeg",
+      }),
+    );
+    const cut = await cutOutBackground(fd);
+    if (!cut.ok) throw new Error(`angle ${shot.angle}: ${cut.error}`);
+    out.push({
+      blob: await (await fetch(cut.nobgDataUrl)).blob(),
+      angle: shot.angle,
+    });
+  }
+  return out;
+}
+
 const listeners = new Set<() => void>();
 
 function emit() {
@@ -127,7 +150,7 @@ async function runJob(job: Job): Promise<void> {
     fd.append("photo", file);
     const result = await processItem(fd);
     if (!result.ok) throw new Error(result.error);
-    const extraImages = await uploadExtraAngles(extras);
+    const extraImages = await uploadExtraAngles(await cutOutExtras(extras, job.id));
     try {
       await saveProcessedItem({
         nobgDataUrl: result.nobgDataUrl,

@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { font } from "@/features/theme/config";
 import { CameraCapture, type CapturedShot } from "./camera-capture";
+import { ScanImport } from "./scan-import";
 import { ProcessModal } from "@/features/items/dashboard/process-modal";
 import { Boards } from "./boards";
 import { Search } from "./search";
@@ -44,6 +45,7 @@ function LeftPane({
   now: number;
 }) {
   const [camera, setCamera] = useState(false);
+  const [scanning, setScanning] = useState(false);
   const [pendingInput, setPendingInput] = useState<PendingInput>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -119,6 +121,7 @@ function LeftPane({
         <AddMenu
           onUpload={() => inputRef.current?.click()}
           onCamera={() => setCamera(true)}
+          onScan={() => setScanning((v) => !v)}
         />
         {count > 0 && (
           <LinkAction href="/app/room">
@@ -126,6 +129,12 @@ function LeftPane({
           </LinkAction>
         )}
       </div>
+
+      {scanning && (
+        <div className="mt-6">
+          <ScanImport />
+        </div>
+      )}
 
       <CameraCapture
         open={camera}
@@ -147,9 +156,11 @@ function LeftPane({
 function AddMenu({
   onUpload,
   onCamera,
+  onScan,
 }: {
   onUpload: () => void;
   onCamera: () => void;
+  onScan: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -221,9 +232,17 @@ function AddMenu({
                 setOpen(false);
                 onCamera();
               }}
-              last
             >
               <span aria-hidden>◉</span> take a photo
+            </MenuItem>
+            <MenuItem
+              onClick={() => {
+                setOpen(false);
+                onScan();
+              }}
+              last
+            >
+              <span aria-hidden>◇</span> scan for 3d
             </MenuItem>
           </motion.div>
         )}

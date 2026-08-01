@@ -34,15 +34,31 @@ export const FLAG_COPY: Record<ShotFlag, string> = {
   "low-res": "camera resolution is low for a 3d model",
 };
 
-export function checkShot(canvas: HTMLCanvasElement): ShotCheck | null {
-  const gray = toGrayscale(canvas);
+export type ShotMetrics = {
+  sharpness: number;
+  luma: number;
+  clipped: number;
+  fill: number;
+};
+
+export function measure(
+  source: HTMLCanvasElement | ImageBitmap,
+): ShotMetrics | null {
+  const gray = toGrayscale(source);
   if (!gray) return null;
-
   const { data, width, height } = gray;
-  const sharpness = laplacianVariance(data, width, height);
-  const { luma, clipped } = exposure(data);
-  const fill = subjectFill(data, width, height);
+  return {
+    sharpness: laplacianVariance(data, width, height),
+    ...exposure(data),
+    fill: subjectFill(data, width, height),
+  };
+}
 
+export function checkShot(canvas: HTMLCanvasElement): ShotCheck | null {
+  const metrics = measure(canvas);
+  if (!metrics) return null;
+
+  const { sharpness, luma, clipped, fill } = metrics;
   const flags: ShotFlag[] = [];
   if (sharpness < MIN_SHARPNESS) flags.push("blurry");
   if (luma < DARK_LUMA) flags.push("dark");
@@ -54,7 +70,7 @@ export function checkShot(canvas: HTMLCanvasElement): ShotCheck | null {
   return { sharpness, luma, clipped, fill, flags };
 }
 
-function toGrayscale(source: HTMLCanvasElement) {
+function toGrayscale(source: HTMLCanvasElement | ImageBitmap) {
   const scale = Math.min(1, WORK_WIDTH / source.width);
   const width = Math.max(2, Math.round(source.width * scale));
   const height = Math.max(2, Math.round(source.height * scale));

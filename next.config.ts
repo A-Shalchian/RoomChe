@@ -31,6 +31,9 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   allowedDevOrigins: ["*.trycloudflare.com", "*.ts.net"],
+  experimental: {
+    proxyClientMaxBodySize: "64mb",
+  },
   async headers() {
     return [
       {

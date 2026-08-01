@@ -47,6 +47,38 @@ export async function processItem(formData: FormData): Promise<ProcessResult> {
   }
 }
 
+export type CutoutResult =
+  | { ok: true; nobgDataUrl: string }
+  | { ok: false; error: string };
+
+export async function cutOutBackground(
+  formData: FormData,
+): Promise<CutoutResult> {
+  const file = formData.get("photo");
+  if (!(file instanceof File) || file.size === 0) {
+    return { ok: false, error: "no file" };
+  }
+
+  const work = path.join(tmpdir(), `roomche-cut-${randomUUID()}`);
+  const srcPath = path.join(work, "src.png");
+  const dstPath = path.join(work, "nobg.png");
+
+  try {
+    await mkdir(work, { recursive: true });
+    await writeFile(srcPath, Buffer.from(await file.arrayBuffer()));
+    await runPython(srcPath, dstPath);
+    const nobg = await readFile(dstPath);
+    return {
+      ok: true,
+      nobgDataUrl: `data:image/png;base64,${nobg.toString("base64")}`,
+    };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  } finally {
+    await rm(work, { recursive: true, force: true }).catch(() => undefined);
+  }
+}
+
 function runPython(src: string, dst: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const script = path.join(process.cwd(), "scripts", "bg-remove.py");
