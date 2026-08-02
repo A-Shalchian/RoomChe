@@ -235,6 +235,45 @@ export type Database = {
         }
         Relationships: []
       }
+      room_plans: {
+        Row: {
+          created_at: string
+          floor_colour: string
+          id: string
+          name: string
+          openings: Json
+          points: Json
+          updated_at: string
+          user_id: string
+          wall_height: number
+          walls: Json
+        }
+        Insert: {
+          created_at?: string
+          floor_colour?: string
+          id?: string
+          name?: string
+          openings?: Json
+          points?: Json
+          updated_at?: string
+          user_id: string
+          wall_height?: number
+          walls?: Json
+        }
+        Update: {
+          created_at?: string
+          floor_colour?: string
+          id?: string
+          name?: string
+          openings?: Json
+          points?: Json
+          updated_at?: string
+          user_id?: string
+          wall_height?: number
+          walls?: Json
+        }
+        Relationships: []
+      }
       tags: {
         Row: {
           created_at: string

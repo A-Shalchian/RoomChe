@@ -57,8 +57,16 @@ export default async function RoomPage({
           >
             <span aria-hidden>←</span> hub
           </Link>
-          <span className="text-[color:var(--lv-ink-2)]">
-            your room · {items.length} kept
+          <span className="flex items-center gap-4">
+            <Link
+              href="/app/room/plan"
+              className="transition-colors hover:[color:var(--lv-accent)]"
+            >
+              plan the room <span aria-hidden>→</span>
+            </Link>
+            <span className="text-[color:var(--lv-ink-2)]">
+              your room · {items.length} kept
+            </span>
           </span>
         </div>
 
