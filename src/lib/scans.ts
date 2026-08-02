@@ -31,6 +31,10 @@ export function glbPath(setId: string): string {
   return path.join(outputDir(setId), "model.glb");
 }
 
+export function planPath(setId: string): string {
+  return path.join(outputDir(setId), "plan.json");
+}
+
 export function jobFile(jobId: string): string {
   if (!UUID.test(jobId)) throw new Error("bad job id");
   return path.join(JOBS_ROOT, `${jobId}.json`);

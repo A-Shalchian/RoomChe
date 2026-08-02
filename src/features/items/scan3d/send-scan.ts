@@ -2,7 +2,7 @@
 
 import type { ScanSubject } from "@/features/items/capture/scan-targets";
 
-export type JobRoute = "photogrammetry" | "ai" | "frames";
+export type JobRoute = "photogrammetry" | "ai" | "frames" | "roomplan";
 
 export type StartJobInput = {
   setId: string;
@@ -12,6 +12,7 @@ export type StartJobInput = {
   route: JobRoute;
   maxDim?: number;
   targetFrames?: number;
+  ceiling?: number;
 };
 
 const UPLOAD_CONCURRENCY = 4;

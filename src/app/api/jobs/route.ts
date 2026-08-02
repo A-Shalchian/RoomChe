@@ -13,9 +13,10 @@ const body = z.object({
   label: z.string().min(1).max(80),
   subject: z.enum(SCAN_SUBJECTS),
   source: z.enum(["video", "photos"]),
-  route: z.enum(["photogrammetry", "ai", "frames"]),
+  route: z.enum(["photogrammetry", "ai", "frames", "roomplan"]),
   maxDim: z.number().int().min(800).max(4000).optional(),
   targetFrames: z.number().int().min(20).max(400).optional(),
+  ceiling: z.number().min(1.8).max(5).optional(),
 });
 
 async function requireUser() {
@@ -44,7 +45,8 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: parsed.error.issues[0].message }, { status: 400 });
   }
 
-  const { setId, label, subject, source, route, maxDim, targetFrames } = parsed.data;
+  const { setId, label, subject, source, route, maxDim, targetFrames, ceiling } =
+    parsed.data;
   const target = SCAN_TARGETS[subject];
 
   if (route === "frames" && source !== "video") {
@@ -55,7 +57,13 @@ export async function POST(request: NextRequest) {
   }
 
   const stages: Stage[] =
-    route === "frames"
+    route === "roomplan"
+      ? [
+          ...(source === "video" ? (["extract"] as Stage[]) : []),
+          "reconstruct",
+          "roomplan",
+        ]
+      : route === "frames"
       ? ["extract"]
       : [
           ...(source === "video" ? (["extract"] as Stage[]) : []),
@@ -71,8 +79,10 @@ export async function POST(request: NextRequest) {
     stages,
     maxDim,
     targetFrames,
-    masks: target.masks,
+    masks: route === "roomplan" ? false : target.masks,
     sequential: source === "video",
+    sparseOnly: route === "roomplan",
+    ceiling,
   });
 
   ensureRunner();

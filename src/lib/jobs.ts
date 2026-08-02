@@ -3,7 +3,7 @@ import path from "node:path";
 import { z } from "zod";
 import { JOBS_ROOT, jobFile } from "./scans";
 
-export const STAGES = ["extract", "reconstruct", "bake", "aimesh"] as const;
+export const STAGES = ["extract", "reconstruct", "bake", "aimesh", "roomplan"] as const;
 
 export type Stage = (typeof STAGES)[number];
 
@@ -12,12 +12,14 @@ export const STAGE_LABEL: Record<Stage, string> = {
   reconstruct: "solving cameras",
   bake: "baking a glb",
   aimesh: "ai mesh",
+  roomplan: "measuring the room",
 };
 
 export const HEAVY_STAGES: ReadonlySet<Stage> = new Set<Stage>([
   "reconstruct",
   "bake",
   "aimesh",
+  "roomplan",
 ]);
 
 export const JOB_STATES = [
@@ -34,7 +36,7 @@ export const jobSchema = z.object({
   id: z.string(),
   setId: z.string(),
   label: z.string(),
-  route: z.enum(["photogrammetry", "ai", "frames"]),
+  route: z.enum(["photogrammetry", "ai", "frames", "roomplan"]),
   stages: z.array(z.enum(STAGES)).min(1),
   stageIndex: z.number().int().min(0),
   state: z.enum(JOB_STATES),
@@ -46,6 +48,8 @@ export const jobSchema = z.object({
   maxDim: z.number().int(),
   masks: z.boolean(),
   sequential: z.boolean(),
+  sparseOnly: z.boolean(),
+  ceiling: z.number(),
   targetFrames: z.number().int(),
   cancelRequested: z.boolean(),
   createdAt: z.number(),
@@ -63,6 +67,8 @@ export type NewJob = {
   maxDim?: number;
   masks?: boolean;
   sequential?: boolean;
+  sparseOnly?: boolean;
+  ceiling?: number;
   targetFrames?: number;
 };
 
@@ -95,6 +101,8 @@ export async function createJob(input: NewJob): Promise<ScanJob> {
     maxDim: input.maxDim ?? 2000,
     masks: input.masks ?? false,
     sequential: input.sequential ?? false,
+    sparseOnly: input.sparseOnly ?? false,
+    ceiling: input.ceiling ?? 2.4,
     targetFrames: input.targetFrames ?? 120,
     cancelRequested: false,
     createdAt: Date.now(),

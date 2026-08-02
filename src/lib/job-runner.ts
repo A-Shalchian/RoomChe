@@ -10,7 +10,7 @@ import {
   type ScanJob,
   type Stage,
 } from "./jobs";
-import { glbPath, rawDir, scanDir, sourceDir } from "./scans";
+import { glbPath, planPath, rawDir, scanDir, sourceDir } from "./scans";
 
 const HEAVY_SLOTS = 1;
 const LIGHT_SLOTS = 2;
@@ -204,6 +204,7 @@ const SCRIPTS: Record<Stage, string> = {
   reconstruct: "reconstruct.py",
   bake: "bake_glb.py",
   aimesh: "ai_mesh.py",
+  roomplan: "room_plan.py",
 };
 
 function argsFor(stage: Stage, job: ScanJob): string[] {
@@ -223,11 +224,14 @@ function argsFor(stage: Stage, job: ScanJob): string[] {
         String(job.maxDim),
         ...(job.masks ? ["--masks"] : []),
         ...(job.sequential ? ["--sequential"] : []),
+        ...(job.sparseOnly ? ["--sparse-only"] : []),
       ];
     case "bake":
       return [dir, "--out", glbPath(job.setId)];
     case "aimesh":
       return [rawDir(job.setId), "--out", glbPath(job.setId)];
+    case "roomplan":
+      return [dir, "--out", planPath(job.setId), "--ceiling", String(job.ceiling)];
   }
 }
 

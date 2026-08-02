@@ -73,6 +73,12 @@ export function RoomBuilder({ initial }: { initial: RoomPlan }) {
           >
             <PlanGuess
               name={p.plan.name}
+              wallHeight={p.plan.wallHeight}
+              onMeasured={(points, wallHeight) => {
+                p.patch({ points, walls: [], openings: [], wallHeight });
+                p.setMode("edit");
+                p.setSelection(null);
+              }}
               onUse={(guess) => {
                 p.patch({
                   points: guess.plan.points,

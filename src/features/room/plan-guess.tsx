@@ -6,7 +6,7 @@ import { guessPlanFromScan } from "./guess-action";
 import type { GuessedPlan } from "./guess";
 import { Small } from "./controls";
 
-type Phase = "idle" | "uploading" | "extracting" | "reading" | "ready";
+type Phase = "idle" | "uploading" | "extracting" | "reading" | "solving" | "ready";
 
 const SHOOT = [
   "stand near the middle and turn slowly through a full circle",
@@ -17,16 +17,53 @@ const SHOOT = [
 
 export function PlanGuess({
   name,
+  wallHeight,
   onUse,
+  onMeasured,
 }: {
   name: string;
+  wallHeight: number;
   onUse: (guess: GuessedPlan) => void;
+  onMeasured: (points: { x: number; z: number }[], wallHeight: number) => void;
 }) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<GuessedPlan | null>(null);
   const videoRef = useRef<HTMLInputElement>(null);
   const photoRef = useRef<HTMLInputElement>(null);
+  const measureRef = useRef<HTMLInputElement>(null);
+
+  async function measure(files: FileList | null) {
+    if (!files || files.length === 0) return;
+    setError(null);
+    setResult(null);
+    setPhase("uploading");
+    try {
+      const setId = crypto.randomUUID();
+      await sendVideo(setId, files[0]);
+      setPhase("solving");
+      const jobId = await startJob({
+        setId,
+        label: `${name} measure`,
+        subject: "ground-large",
+        source: "video",
+        route: "roomplan",
+        targetFrames: 90,
+        ceiling: wallHeight,
+      });
+      await waitForJob(jobId, 1800);
+      const res = await fetch(`/api/scan/${setId}/roomplan`, { cache: "no-store" });
+      if (!res.ok) throw new Error("the solve produced no plan");
+      const { plan } = (await res.json()) as {
+        plan: { points: { x: number; z: number }[]; wallHeight: number };
+      };
+      onMeasured(plan.points, plan.wallHeight);
+      setPhase("idle");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+      setPhase("idle");
+    }
+  }
 
   async function run(kind: "video" | "photos", files: FileList | null) {
     if (!files || files.length === 0) return;
@@ -64,7 +101,7 @@ export function PlanGuess({
     }
   }
 
-  const busy = phase === "uploading" || phase === "extracting" || phase === "reading";
+  const busy = phase !== "idle" && phase !== "ready";
 
   return (
     <div
@@ -84,6 +121,13 @@ export function PlanGuess({
         accept="video/*"
         className="hidden"
         onChange={(e) => void run("video", e.target.files)}
+      />
+      <input
+        ref={measureRef}
+        type="file"
+        accept="video/*"
+        className="hidden"
+        onChange={(e) => void measure(e.target.files)}
       />
       <input
         ref={photoRef}
@@ -111,10 +155,20 @@ export function PlanGuess({
           </ol>
           <div className="flex flex-wrap gap-2">
             <Small onClick={() => videoRef.current?.click()} solid>
-              pick a video
+              quick sketch from a video
             </Small>
-            <Small onClick={() => photoRef.current?.click()}>pick photos</Small>
+            <Small onClick={() => photoRef.current?.click()}>from photos</Small>
           </div>
+          <p
+            className="font-mono text-[10px] uppercase tracking-[0.16em] leading-relaxed"
+            style={{ color: "var(--lv-ink-2)" }}
+          >
+            or measure it properly. walk the room, do not spin on the spot, and
+            set the wall height to your real ceiling first
+          </p>
+          <Small onClick={() => measureRef.current?.click()}>
+            measure from a video, slow
+          </Small>
         </>
       )}
 
@@ -127,7 +181,9 @@ export function PlanGuess({
             ? "sending it to the workstation…"
             : phase === "extracting"
               ? "pulling frames out of the clip…"
-              : "reading the room…"}
+              : phase === "solving"
+                ? "solving the cameras and measuring, this takes a while…"
+                : "reading the room…"}
         </p>
       )}
 
@@ -192,8 +248,8 @@ function Line({
   );
 }
 
-async function waitForJob(jobId: string): Promise<void> {
-  for (let tries = 0; tries < 300; tries += 1) {
+async function waitForJob(jobId: string, limit = 300): Promise<void> {
+  for (let tries = 0; tries < limit; tries += 1) {
     await new Promise((r) => setTimeout(r, 2000));
     const res = await fetch(`/api/jobs/${jobId}`, { cache: "no-store" });
     if (!res.ok) throw new Error("lost track of the frame job");

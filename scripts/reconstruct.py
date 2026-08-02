@@ -87,7 +87,7 @@ def colmap(args, cwd):
         fail(f"colmap {args[0]} exited {result.returncode}")
 
 
-def reconstruct(scan_dir, max_dim, with_masks, sequential):
+def reconstruct(scan_dir, max_dim, with_masks, sequential, sparse_only=False):
     db = scan_dir / "colmap.db"
     sparse = scan_dir / "sparse"
     dense = scan_dir / "dense"
@@ -129,6 +129,9 @@ def reconstruct(scan_dir, max_dim, with_masks, sequential):
     models = sorted(p for p in sparse.iterdir() if p.is_dir())
     if not models:
         fail("mapper produced no model, the photos did not register, shoot more overlap")
+
+    if sparse_only:
+        return models[0]
 
     progress("undistorting")
     colmap([
@@ -188,6 +191,11 @@ def main():
         ),
     )
     parser.add_argument(
+        "--sparse-only",
+        action="store_true",
+        help="stop after the camera solve, which is all a floor plan needs",
+    )
+    parser.add_argument(
         "--reuse",
         action="store_true",
         help="reuse the resized copies and masks from a previous run",
@@ -213,8 +221,10 @@ def main():
     if count < 30:
         print(f"warning: only {count} photos, expect holes", file=sys.stderr)
 
-    mesh = reconstruct(scan_dir, args.max_dim, args.masks, args.sequential)
-    print(f"\nmesh: {mesh}")
+    result = reconstruct(
+        scan_dir, args.max_dim, args.masks, args.sequential, args.sparse_only
+    )
+    print(f"\n{'sparse' if args.sparse_only else 'mesh'}: {result}")
 
 
 if __name__ == "__main__":
