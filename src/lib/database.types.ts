@@ -241,8 +241,10 @@ export type Database = {
           floor_colour: string
           id: string
           name: string
+          frame_transform: Json | null
           openings: Json
           points: Json
+          scan_set_id: string | null
           updated_at: string
           user_id: string
           wall_height: number
@@ -253,8 +255,10 @@ export type Database = {
           floor_colour?: string
           id?: string
           name?: string
+          frame_transform?: Json | null
           openings?: Json
           points?: Json
+          scan_set_id?: string | null
           updated_at?: string
           user_id: string
           wall_height?: number
@@ -265,8 +269,10 @@ export type Database = {
           floor_colour?: string
           id?: string
           name?: string
+          frame_transform?: Json | null
           openings?: Json
           points?: Json
+          scan_set_id?: string | null
           updated_at?: string
           user_id?: string
           wall_height?: number
