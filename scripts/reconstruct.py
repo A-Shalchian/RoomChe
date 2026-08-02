@@ -1,4 +1,5 @@
 import argparse
+import os
 import shutil
 import subprocess
 import sys
@@ -11,10 +12,39 @@ RAW = "raw"
 WORK = "work"
 MASKS = "masks"
 
+STAGE_WEIGHTS = [
+    ("preparing images", 0.10),
+    ("extracting features", 0.16),
+    ("matching", 0.30),
+    ("mapping", 0.42),
+    ("undistorting", 0.46),
+    ("dense stereo", 0.90),
+    ("fusing", 0.96),
+    ("meshing", 1.00),
+]
+
 
 def fail(message):
     print(f"error: {message}", file=sys.stderr)
     sys.exit(1)
+
+
+def progress(stage):
+    for name, value in STAGE_WEIGHTS:
+        if name == stage:
+            print(f"PROGRESS {value:.3f} {stage}", flush=True)
+            return
+
+
+def colmap_binary():
+    override = os.environ.get("COLMAP_BIN")
+    if override and Path(override).exists():
+        return override
+    found = shutil.which("colmap")
+    if found:
+        return found
+    fallback = Path.home() / "tools" / "bin" / "colmap.exe"
+    return str(fallback) if fallback.exists() else None
 
 
 def prepare_images(scan_dir, max_dim, with_masks):
@@ -52,12 +82,12 @@ def prepare_images(scan_dir, max_dim, with_masks):
 
 def colmap(args, cwd):
     print("colmap " + " ".join(args))
-    result = subprocess.run(["colmap", *args], cwd=cwd)
+    result = subprocess.run([colmap_binary(), *args], cwd=cwd)
     if result.returncode != 0:
         fail(f"colmap {args[0]} exited {result.returncode}")
 
 
-def reconstruct(scan_dir, max_dim, with_masks):
+def reconstruct(scan_dir, max_dim, with_masks, sequential):
     db = scan_dir / "colmap.db"
     sparse = scan_dir / "sparse"
     dense = scan_dir / "dense"
@@ -73,10 +103,22 @@ def reconstruct(scan_dir, max_dim, with_masks):
     ]
     if with_masks:
         extract += ["--ImageReader.mask_path", str(scan_dir / MASKS)]
+    progress("extracting features")
     colmap(extract, scan_dir)
 
-    colmap(["exhaustive_matcher", "--database_path", str(db)], scan_dir)
+    progress("matching")
+    if sequential:
+        colmap([
+            "sequential_matcher",
+            "--database_path", str(db),
+            "--SequentialMatching.overlap", "12",
+            "--SequentialMatching.quadratic_overlap", "1",
+            "--SequentialMatching.loop_detection", "0",
+        ], scan_dir)
+    else:
+        colmap(["exhaustive_matcher", "--database_path", str(db)], scan_dir)
 
+    progress("mapping")
     colmap([
         "mapper",
         "--database_path", str(db),
@@ -88,6 +130,7 @@ def reconstruct(scan_dir, max_dim, with_masks):
     if not models:
         fail("mapper produced no model, the photos did not register, shoot more overlap")
 
+    progress("undistorting")
     colmap([
         "image_undistorter",
         "--image_path", str(scan_dir / WORK),
@@ -97,12 +140,15 @@ def reconstruct(scan_dir, max_dim, with_masks):
         "--max_image_size", str(max_dim),
     ], scan_dir)
 
+    progress("dense stereo")
     colmap(["patch_match_stereo", "--workspace_path", str(dense)], scan_dir)
+    progress("fusing")
     colmap([
         "stereo_fusion",
         "--workspace_path", str(dense),
         "--output_path", str(dense / "fused.ply"),
     ], scan_dir)
+    progress("meshing")
     colmap([
         "poisson_mesher",
         "--input_path", str(dense / "fused.ply"),
@@ -134,6 +180,14 @@ def main():
         ),
     )
     parser.add_argument(
+        "--sequential",
+        action="store_true",
+        help=(
+            "match neighbouring frames only. Correct for video frames, which are "
+            "already in orbit order, and far cheaper than matching every pair."
+        ),
+    )
+    parser.add_argument(
         "--reuse",
         action="store_true",
         help="reuse the resized copies and masks from a previous run",
@@ -143,12 +197,14 @@ def main():
     scan_dir = Path(args.scan_dir).resolve()
     if not (scan_dir / RAW).is_dir():
         fail(f"{scan_dir} has no {RAW} folder")
-    if shutil.which("colmap") is None:
+    if colmap_binary() is None:
         fail(
-            "colmap is not on PATH. Download the CUDA build from "
-            "https://github.com/colmap/colmap/releases and add its folder to PATH."
+            "colmap was not found. Set COLMAP_BIN to colmap.exe, or download the "
+            "CUDA build from https://github.com/colmap/colmap/releases and add its "
+            "folder to PATH."
         )
 
+    progress("preparing images")
     if args.reuse:
         count = len(list((scan_dir / WORK).iterdir()))
     else:
@@ -157,7 +213,7 @@ def main():
     if count < 30:
         print(f"warning: only {count} photos, expect holes", file=sys.stderr)
 
-    mesh = reconstruct(scan_dir, args.max_dim, args.masks)
+    mesh = reconstruct(scan_dir, args.max_dim, args.masks, args.sequential)
     print(f"\nmesh: {mesh}")
 
 
