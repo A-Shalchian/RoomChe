@@ -13,7 +13,7 @@ const body = z.object({
   label: z.string().min(1).max(80),
   subject: z.enum(SCAN_SUBJECTS),
   source: z.enum(["video", "photos"]),
-  route: z.enum(["photogrammetry", "ai"]),
+  route: z.enum(["photogrammetry", "ai", "frames"]),
   maxDim: z.number().int().min(800).max(4000).optional(),
   targetFrames: z.number().int().min(20).max(400).optional(),
 });
@@ -47,12 +47,22 @@ export async function POST(request: NextRequest) {
   const { setId, label, subject, source, route, maxDim, targetFrames } = parsed.data;
   const target = SCAN_TARGETS[subject];
 
-  const stages: Stage[] = [
-    ...(source === "video" ? (["extract"] as Stage[]) : []),
-    ...(route === "ai"
-      ? (["aimesh"] as Stage[])
-      : (["reconstruct", "bake"] as Stage[])),
-  ];
+  if (route === "frames" && source !== "video") {
+    return Response.json(
+      { error: "frames only makes sense for a video" },
+      { status: 400 },
+    );
+  }
+
+  const stages: Stage[] =
+    route === "frames"
+      ? ["extract"]
+      : [
+          ...(source === "video" ? (["extract"] as Stage[]) : []),
+          ...(route === "ai"
+            ? (["aimesh"] as Stage[])
+            : (["reconstruct", "bake"] as Stage[])),
+        ];
 
   const job = await createJob({
     setId,

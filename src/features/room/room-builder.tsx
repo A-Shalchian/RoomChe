@@ -2,6 +2,7 @@
 
 import { starterPlan, type RoomPlan } from "./plan";
 import { PlanCanvas } from "./plan-canvas";
+import { PlanGuess } from "./plan-guess";
 import { PlanGuide } from "./plan-guide";
 import { PlanInspector } from "./plan-inspector";
 import { RoomScene } from "./room-scene";
@@ -70,6 +71,20 @@ export function RoomBuilder({ initial }: { initial: RoomPlan }) {
             className="flex flex-col gap-4 border-[3px] p-4"
             style={{ borderColor: "var(--lv-ink)" }}
           >
+            <PlanGuess
+              name={p.plan.name}
+              onUse={(guess) => {
+                p.patch({
+                  points: guess.plan.points,
+                  walls: guess.plan.walls,
+                  openings: guess.plan.openings,
+                  wallHeight: guess.plan.wallHeight,
+                  floorColour: guess.plan.floorColour,
+                });
+                p.setMode("edit");
+                p.setSelection(null);
+              }}
+            />
             <PlanGuide plan={p.plan} mode={p.mode} />
             <PlanInspector
               plan={p.plan}

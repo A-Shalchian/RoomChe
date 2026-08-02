@@ -34,7 +34,7 @@ export const jobSchema = z.object({
   id: z.string(),
   setId: z.string(),
   label: z.string(),
-  route: z.enum(["photogrammetry", "ai"]),
+  route: z.enum(["photogrammetry", "ai", "frames"]),
   stages: z.array(z.enum(STAGES)).min(1),
   stageIndex: z.number().int().min(0),
   state: z.enum(JOB_STATES),

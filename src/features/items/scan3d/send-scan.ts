@@ -2,7 +2,7 @@
 
 import type { ScanSubject } from "@/features/items/capture/scan-targets";
 
-export type JobRoute = "photogrammetry" | "ai";
+export type JobRoute = "photogrammetry" | "ai" | "frames";
 
 export type StartJobInput = {
   setId: string;
