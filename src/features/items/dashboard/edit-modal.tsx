@@ -3,6 +3,7 @@
 import { motion, AnimatePresence } from "motion/react";
 import { useEffect, useState, useTransition } from "react";
 import { deleteItem, updateItem } from "@/features/items/edit-action";
+import { RetouchPanel } from "@/features/items/retouch/retouch-panel";
 import { setItemTags } from "@/features/items/tags-action";
 import { TagInput } from "./tag-input";
 import type { DashboardItem } from "./types";
@@ -57,6 +58,7 @@ function Body({
   const [category, setCategory] = useState(item.category ?? "");
   const [location, setLocation] = useState(item.locations?.name ?? "");
   const [verdict, setVerdict] = useState<Verdict>(item.would_discard);
+  const [retouching, setRetouching] = useState(false);
   const [whyKept, setWhyKept] = useState(item.why_kept ?? "");
   const [notes, setNotes] = useState(item.notes ?? "");
   const [isContainer, setIsContainer] = useState(item.is_container);
@@ -137,26 +139,51 @@ function Body({
         onClick={(e) => e.stopPropagation()}
       >
         <div
-          className="flex items-center justify-center border-b-[3px] p-6 md:border-b-0 md:border-r-[3px]"
+          className="flex flex-col justify-center gap-3 border-b-[3px] p-6 md:border-b-0 md:border-r-[3px]"
           style={{ borderColor: "var(--lv-ink)" }}
         >
-          <div
-            className="flex aspect-square w-full max-w-[280px] items-center justify-center overflow-hidden border-[2px]"
-            style={{ borderColor: "var(--lv-rule)" }}
-          >
-            {item.image_display_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={item.image_display_url}
-                alt={item.name}
-                className="h-full w-full object-contain"
-              />
-            ) : (
-              <span className="font-mono text-[11px] uppercase tracking-[0.22em] text-[color:var(--lv-ink-2)]">
-                no image
-              </span>
-            )}
-          </div>
+          {retouching && item.image_display_url ? (
+            <RetouchPanel
+              itemId={item.id}
+              sourceUrl={item.image_display_url}
+              onClose={() => setRetouching(false)}
+              onSaved={() => {
+                setRetouching(false);
+                onClose();
+              }}
+            />
+          ) : (
+            <>
+              <div
+                className="mx-auto flex aspect-square w-full max-w-[280px] items-center justify-center overflow-hidden border-[2px]"
+                style={{ borderColor: "var(--lv-rule)" }}
+              >
+                {item.image_display_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={item.image_display_url}
+                    alt={item.name}
+                    className="h-full w-full object-contain"
+                  />
+                ) : (
+                  <span className="font-mono text-[11px] uppercase tracking-[0.22em] text-[color:var(--lv-ink-2)]">
+                    no image
+                  </span>
+                )}
+              </div>
+              {item.image_display_url && (
+                <button
+                  type="button"
+                  onClick={() => setRetouching(true)}
+                  disabled={saving || deleting}
+                  className="mx-auto border-[2px] px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.18em] transition-colors hover:[background:var(--lv-ink)] hover:[color:var(--lv-bg)] disabled:opacity-40"
+                  style={{ borderColor: "var(--lv-ink)" }}
+                >
+                  retouch with ai
+                </button>
+              )}
+            </>
+          )}
         </div>
 
         <div className="flex flex-col gap-4 p-6">
