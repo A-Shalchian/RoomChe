@@ -109,14 +109,3 @@ export const SCAN_TARGETS: Record<ScanSubject, ScanTarget> = {
 };
 
 export const MIN_MEGAPIXELS = 8;
-
-export function reconstructCommand(
-  setId: string,
-  subject: ScanSubject,
-): string {
-  const target = SCAN_TARGETS[subject];
-  if (target.route === "multiview-ai") {
-    return `front and back are ready in .scans/${setId}/raw, feed them to the multi-view model`;
-  }
-  return `python scripts/reconstruct.py .scans/${setId}${target.masks ? " --masks" : ""}`;
-}

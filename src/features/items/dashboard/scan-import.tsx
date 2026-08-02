@@ -2,19 +2,31 @@
 
 import { useRef, useState } from "react";
 import {
-  reconstructCommand,
   SCAN_SUBJECTS,
   SCAN_TARGETS,
   type ScanSubject,
 } from "@/features/items/capture/scan-targets";
 import { useScanSet } from "@/features/items/capture/use-scan-set";
+import type { JobRoute } from "@/features/items/scan3d/send-scan";
 import { ScanAdvice } from "./scan-advice";
 import { ScanReportPanel } from "./scan-report-panel";
+import { Note, PillButton, Action } from "./scan-import-parts";
+
+const VIDEO_RULES = [
+  "4k 60fps, 1x lens, highest bitrate your phone offers",
+  "lock focus and exposure before you press record",
+  "three slow orbits at three heights, about twenty seconds each",
+  "move your body, leave the object where it is",
+];
 
 export function ScanImport() {
   const [subject, setSubject] = useState<ScanSubject>("ground-rigid");
-  const inputRef = useRef<HTMLInputElement>(null);
-  const scan = useScanSet(subject);
+  const [label, setLabel] = useState("");
+  const [route, setRoute] = useState<JobRoute>("photogrammetry");
+  const [targetFrames, setTargetFrames] = useState(120);
+  const photoRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLInputElement>(null);
+  const scan = useScanSet(subject, label);
   const target = SCAN_TARGETS[subject];
   const busy = scan.phase === "reading" || scan.phase === "uploading";
 
@@ -27,28 +39,39 @@ export function ScanImport() {
         <span aria-hidden style={{ color: "var(--lv-accent)" }}>
           ●
         </span>
-        photo scan · full resolution
+        full scan · workstation queue
       </header>
 
-      <ScanAdvice onSubject={setSubject} disabled={busy} />
+      <ScanAdvice onSubject={setSubject} onName={setLabel} disabled={busy} />
 
       <div className="flex flex-wrap gap-1.5">
         {SCAN_SUBJECTS.map((option) => (
-          <button
+          <PillButton
             key={option}
-            type="button"
-            onClick={() => setSubject(option)}
+            active={option === subject}
             disabled={busy}
-            className="border-[2px] px-2 py-1 font-mono text-[10px] uppercase tracking-[0.18em] disabled:opacity-40"
-            style={{
-              borderColor: "var(--lv-ink)",
-              background: option === subject ? "var(--lv-ink)" : "transparent",
-              color: option === subject ? "var(--lv-bg)" : "var(--lv-ink)",
-            }}
+            onClick={() => setSubject(option)}
           >
             {SCAN_TARGETS[option].label}
-          </button>
+          </PillButton>
         ))}
+      </div>
+
+      <div className="flex flex-wrap gap-1.5">
+        <PillButton
+          active={route === "photogrammetry"}
+          disabled={busy}
+          onClick={() => setRoute("photogrammetry")}
+        >
+          measured · colmap
+        </PillButton>
+        <PillButton
+          active={route === "ai"}
+          disabled={busy}
+          onClick={() => setRoute("ai")}
+        >
+          fast · ai mesh
+        </PillButton>
       </div>
 
       <div className="flex flex-col gap-1.5">
@@ -59,21 +82,46 @@ export function ScanImport() {
             {target.caveat}
           </Note>
         )}
+        {route === "ai" && (
+          <Note label="route" accent>
+            four views go to the multi-view model, minutes not hours, the unseen
+            parts get invented
+          </Note>
+        )}
       </div>
 
       <input
-        ref={inputRef}
+        ref={photoRef}
         type="file"
         accept="image/*"
         multiple
         className="hidden"
-        onChange={(e) => void scan.load(e.target.files)}
+        onChange={(e) => void scan.loadPhotos(e.target.files)}
+      />
+      <input
+        ref={videoRef}
+        type="file"
+        accept="video/*"
+        className="hidden"
+        onChange={(e) => scan.loadVideo(e.target.files)}
       />
 
       {scan.phase === "idle" && (
-        <Action onClick={() => inputRef.current?.click()} solid>
-          pick photos from your camera roll
-        </Action>
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap gap-2">
+            <Action onClick={() => videoRef.current?.click()} solid>
+              pick a video
+            </Action>
+            <Action onClick={() => photoRef.current?.click()}>pick photos</Action>
+          </div>
+          <div className="flex flex-col gap-1">
+            {VIDEO_RULES.map((rule) => (
+              <Note key={rule} label="video">
+                {rule}
+              </Note>
+            ))}
+          </div>
+        </div>
       )}
 
       {busy && (
@@ -82,7 +130,10 @@ export function ScanImport() {
             {scan.phase === "reading" ? "checking photos" : "uploading"} ·{" "}
             {Math.round(scan.progress * 100)}%
           </span>
-          <div className="h-2 w-full border-[2px]" style={{ borderColor: "var(--lv-ink)" }}>
+          <div
+            className="h-2 w-full border-[2px]"
+            style={{ borderColor: "var(--lv-ink)" }}
+          >
             <div
               className="h-full"
               style={{
@@ -97,95 +148,53 @@ export function ScanImport() {
       {scan.report && !busy && <ScanReportPanel report={scan.report} />}
 
       {scan.unreadable.length > 0 && (
-        <p
-          className="font-mono text-[10px] uppercase tracking-[0.16em]"
-          style={{ color: "var(--lv-accent)" }}
-        >
+        <Note label="skipped" accent>
           {scan.unreadable.length} files could not be read by this browser
-        </p>
+        </Note>
       )}
 
       {scan.error && (
-        <p
-          className="font-mono text-[10px] uppercase tracking-[0.16em]"
-          style={{ color: "var(--lv-accent)" }}
-        >
+        <Note label="error" accent>
           {scan.error}
-        </p>
+        </Note>
       )}
 
       {scan.phase === "ready" && (
-        <div className="flex flex-wrap gap-2">
-          <Action onClick={() => void scan.upload()} solid>
-            send {scan.files.length} to the workstation →
-          </Action>
-          <Action onClick={scan.clear}>start over</Action>
+        <div className="flex flex-col gap-3">
+          {scan.source === "video" && route === "photogrammetry" && (
+            <label className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.18em]">
+              <span style={{ color: "var(--lv-ink-2)" }}>frames to keep</span>
+              <input
+                type="range"
+                min={40}
+                max={240}
+                step={10}
+                value={targetFrames}
+                onChange={(e) => setTargetFrames(Number(e.target.value))}
+                className="flex-1 accent-[color:var(--lv-accent)]"
+              />
+              <span style={{ color: "var(--lv-accent)" }}>{targetFrames}</span>
+            </label>
+          )}
+          <div className="flex flex-wrap gap-2">
+            <Action onClick={() => void scan.send(route, targetFrames)} solid>
+              {scan.source === "video"
+                ? `send ${scan.clip?.name ?? "the clip"} →`
+                : `send ${scan.files.length} photos →`}
+            </Action>
+            <Action onClick={scan.clear}>start over</Action>
+          </div>
         </div>
       )}
 
-      {scan.phase === "done" && scan.setId && (
+      {scan.phase === "done" && (
         <div className="flex flex-col gap-2">
-          <Note label="next">run this on the workstation</Note>
-          <code
-            className="select-all border-[2px] px-3 py-2 font-mono text-[10px] leading-relaxed"
-            style={{ borderColor: "var(--lv-ink)" }}
-          >
-            {reconstructCommand(scan.setId, subject)}
-          </code>
+          <Note label="queued" accent>
+            the workstation has it, watch the queue below
+          </Note>
           <Action onClick={scan.clear}>scan another object</Action>
         </div>
       )}
     </section>
-  );
-}
-
-function Note({
-  label,
-  children,
-  accent,
-}: {
-  label: string;
-  children: React.ReactNode;
-  accent?: boolean;
-}) {
-  return (
-    <p className="flex gap-2 font-mono text-[10px] uppercase tracking-[0.16em] leading-relaxed">
-      <span className="shrink-0" style={{ color: "var(--lv-ink-2)" }}>
-        {label}
-      </span>
-      <span style={{ color: accent ? "var(--lv-accent)" : "var(--lv-ink)" }}>
-        {children}
-      </span>
-    </p>
-  );
-}
-
-function Action({
-  children,
-  onClick,
-  solid,
-}: {
-  children: React.ReactNode;
-  onClick: () => void;
-  solid?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="group relative inline-flex items-center gap-2 overflow-hidden border-[3px] px-4 py-2 font-mono text-[10px] uppercase tracking-[0.22em]"
-      style={{
-        borderColor: "var(--lv-ink)",
-        background: solid ? "var(--lv-ink)" : "var(--lv-bg)",
-        color: solid ? "var(--lv-bg)" : "var(--lv-ink)",
-      }}
-    >
-      <span
-        aria-hidden
-        className="absolute inset-0 origin-left scale-x-0 transition-transform duration-500 ease-out group-hover:scale-x-100"
-        style={{ background: "var(--lv-accent)" }}
-      />
-      <span className="relative">{children}</span>
-    </button>
   );
 }

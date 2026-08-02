@@ -5,7 +5,9 @@ import { motion, AnimatePresence } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { font } from "@/features/theme/config";
 import { CameraCapture, type CapturedShot } from "./camera-capture";
+import { GuidedCapture } from "./guided-capture";
 import { ScanImport } from "./scan-import";
+import { JobPanel } from "@/features/items/scan3d/job-panel";
 import { ProcessModal } from "@/features/items/dashboard/process-modal";
 import { Boards } from "./boards";
 import { Search } from "./search";
@@ -45,6 +47,7 @@ function LeftPane({
   now: number;
 }) {
   const [camera, setCamera] = useState(false);
+  const [guided, setGuided] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [pendingInput, setPendingInput] = useState<PendingInput>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -121,6 +124,7 @@ function LeftPane({
         <AddMenu
           onUpload={() => inputRef.current?.click()}
           onCamera={() => setCamera(true)}
+          onGuided={() => setGuided(true)}
           onScan={() => setScanning((v) => !v)}
         />
         {count > 0 && (
@@ -136,11 +140,23 @@ function LeftPane({
         </div>
       )}
 
+      <div className="mt-6">
+        <JobPanel />
+      </div>
+
       <CameraCapture
         open={camera}
         onClose={() => setCamera(false)}
         onCapture={(shots) => {
           setCamera(false);
+          setPendingInput({ kind: "camera", shots });
+        }}
+      />
+      <GuidedCapture
+        open={guided}
+        onClose={() => setGuided(false)}
+        onCapture={(shots) => {
+          setGuided(false);
           setPendingInput({ kind: "camera", shots });
         }}
       />
@@ -156,10 +172,12 @@ function LeftPane({
 function AddMenu({
   onUpload,
   onCamera,
+  onGuided,
   onScan,
 }: {
   onUpload: () => void;
   onCamera: () => void;
+  onGuided: () => void;
   onScan: () => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -238,11 +256,19 @@ function AddMenu({
             <MenuItem
               onClick={() => {
                 setOpen(false);
+                onGuided();
+              }}
+            >
+              <span aria-hidden>◈</span> 3d, guided
+            </MenuItem>
+            <MenuItem
+              onClick={() => {
+                setOpen(false);
                 onScan();
               }}
               last
             >
-              <span aria-hidden>◇</span> scan for 3d
+              <span aria-hidden>◇</span> 3d, full scan
             </MenuItem>
           </motion.div>
         )}

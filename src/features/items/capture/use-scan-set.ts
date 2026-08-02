@@ -1,22 +1,29 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
+import {
+  sendPhotos,
+  sendVideo,
+  startJob,
+  type JobRoute,
+} from "@/features/items/scan3d/send-scan";
 import { analyzeFile, type ScanFrame } from "./scan-frame";
 import { buildReport, type ScanReport } from "./scan-report";
-import type { ScanSubject } from "./scan-targets";
+import { SCAN_TARGETS, type ScanSubject } from "./scan-targets";
 
 const READ_CONCURRENCY = 4;
-const UPLOAD_CONCURRENCY = 4;
 
 export type ScanPhase = "idle" | "reading" | "ready" | "uploading" | "done";
+export type ScanSource = "photos" | "video";
 
-export function useScanSet(subject: ScanSubject) {
+export function useScanSet(subject: ScanSubject, label: string) {
   const [phase, setPhase] = useState<ScanPhase>("idle");
+  const [source, setSource] = useState<ScanSource>("photos");
   const [files, setFiles] = useState<File[]>([]);
+  const [clip, setClip] = useState<File | null>(null);
   const [frames, setFrames] = useState<ScanFrame[]>([]);
   const [progress, setProgress] = useState(0);
   const [unreadable, setUnreadable] = useState<string[]>([]);
-  const [setId, setSetId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const report = useMemo<ScanReport | null>(
@@ -24,13 +31,24 @@ export function useScanSet(subject: ScanSubject) {
     [frames, subject],
   );
 
-  const load = useCallback(async (picked: FileList | null) => {
+  const clear = useCallback(() => {
+    setFiles([]);
+    setClip(null);
+    setFrames([]);
+    setUnreadable([]);
+    setError(null);
+    setProgress(0);
+    setPhase("idle");
+  }, []);
+
+  const loadPhotos = useCallback(async (picked: FileList | null) => {
     if (!picked || picked.length === 0) return;
     const list = [...picked].sort((a, b) => a.name.localeCompare(b.name));
+    setSource("photos");
+    setClip(null);
     setFiles(list);
     setFrames([]);
     setUnreadable([]);
-    setSetId(null);
     setError(null);
     setProgress(0);
     setPhase("reading");
@@ -51,49 +69,66 @@ export function useScanSet(subject: ScanSubject) {
     setPhase("ready");
   }, []);
 
-  const upload = useCallback(async () => {
-    if (files.length === 0) return;
-    const id = crypto.randomUUID();
-    setSetId(id);
-    setError(null);
-    setProgress(0);
-    setPhase("uploading");
-
-    let done = 0;
-    try {
-      await pool(files, UPLOAD_CONCURRENCY, async (file, index) => {
-        const body = new FormData();
-        body.append("photo", file);
-        body.append("index", String(index));
-        const res = await fetch(`/api/scan/${id}/photo`, {
-          method: "POST",
-          body,
-        });
-        if (!res.ok) {
-          const detail = await res.json().catch(() => ({ error: res.status }));
-          throw new Error(`${file.name}: ${detail.error}`);
-        }
-        done += 1;
-        setProgress(done / files.length);
-      });
-      setPhase("done");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-      setPhase("ready");
-    }
-  }, [files]);
-
-  const clear = useCallback(() => {
+  const loadVideo = useCallback((picked: FileList | null) => {
+    const file = picked?.[0];
+    if (!file) return;
+    setSource("video");
     setFiles([]);
     setFrames([]);
     setUnreadable([]);
-    setSetId(null);
     setError(null);
     setProgress(0);
-    setPhase("idle");
+    setClip(file);
+    setPhase("ready");
   }, []);
 
-  return { phase, files, report, progress, unreadable, setId, error, load, upload, clear };
+  const send = useCallback(
+    async (route: JobRoute, targetFrames: number) => {
+      if (source === "photos" ? files.length === 0 : !clip) return;
+      const setId = crypto.randomUUID();
+      setError(null);
+      setProgress(0);
+      setPhase("uploading");
+
+      try {
+        if (source === "video" && clip) {
+          await sendVideo(setId, clip);
+          setProgress(1);
+        } else {
+          await sendPhotos(setId, files, setProgress);
+        }
+
+        await startJob({
+          setId,
+          label: label.trim() || SCAN_TARGETS[subject].label,
+          subject,
+          source,
+          route,
+          targetFrames,
+        });
+        setPhase("done");
+      } catch (err) {
+        setError(err instanceof Error ? err.message : String(err));
+        setPhase("ready");
+      }
+    },
+    [clip, files, label, source, subject],
+  );
+
+  return {
+    phase,
+    source,
+    files,
+    clip,
+    report,
+    progress,
+    unreadable,
+    error,
+    loadPhotos,
+    loadVideo,
+    send,
+    clear,
+  };
 }
 
 async function pool<T>(

@@ -9,9 +9,11 @@ import type { ScanSubject } from "@/features/items/capture/scan-targets";
 
 export function ScanAdvice({
   onSubject,
+  onName,
   disabled,
 }: {
   onSubject: (subject: ScanSubject) => void;
+  onName?: (name: string) => void;
   disabled?: boolean;
 }) {
   const [name, setName] = useState("");
@@ -39,7 +41,10 @@ export function ScanAdvice({
       <div className="flex gap-2">
         <input
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={(e) => {
+            setName(e.target.value);
+            onName?.(e.target.value);
+          }}
           onKeyDown={(e) => {
             if (e.key === "Enter") void ask();
           }}
